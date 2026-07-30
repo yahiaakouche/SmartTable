@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+*.log
+.env
+*.db
+*.db-wal
+*.db-shm
+drizzle/meta/
+.DS_Store
+release/
