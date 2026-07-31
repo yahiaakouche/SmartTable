@@ -42,6 +42,9 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
  * `notification.created` delivery through the existing bridge.
  * Step 3.7 online: analytics (FR41–FR43) — the read-only BI query layer
  * with the frozen live/rollup branching hidden in the service.
+ * Step 3.8 online: the audit query surface (FR38 review capability) —
+ * GET /audit-log with the four frozen filters and cursor pagination,
+ * Owner/Manager only (B1).
  */
 @Module({
   imports: [

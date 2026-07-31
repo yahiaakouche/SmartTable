@@ -71,4 +71,8 @@ export const BASELINE_PERMISSIONS: Readonly<Record<PermissionKey, readonly Emplo
   // Dashboard is the Owner surface, PRD §7 item 29; the Cashier's own-shift
   // visibility already shipped via SHIFTS_VIEW in 3.4).
   [PermissionKey.ANALYTICS_VIEW]: [EmployeeRole.OWNER, EmployeeRole.MANAGER],
+
+  // Step 3.8 — audit query surface. Ruling B1: Owner + Manager only (API
+  // Contract §3 freezes "Owner/Manager only" for GET /audit-log).
+  [PermissionKey.AUDIT_VIEW]: [EmployeeRole.OWNER, EmployeeRole.MANAGER],
 };

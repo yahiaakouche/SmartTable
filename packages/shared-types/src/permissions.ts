@@ -70,4 +70,10 @@ export enum PermissionKey {
    * Owner, Manager. The Cashier's "own shift only" matrix cell is served by
    * the shifts surface (3.4 D6), not by this module. */
   ANALYTICS_VIEW = 'analytics.view',
+
+  /** View the audit trail (GET /audit-log) — Step 3.8 ruling B1: Owner,
+   * Manager (the contract's frozen "Owner/Manager only"). The trail holds
+   * security events and old/new values (Security §9), so it stays with the
+   * audience already trusted with device revocation and staff management. */
+  AUDIT_VIEW = 'audit.view',
 }
