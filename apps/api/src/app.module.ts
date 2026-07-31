@@ -17,6 +17,7 @@ import { TablesModule } from './modules/tables/tables.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { RealtimeModule } from './common/realtime/realtime.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 /**
  * Foundation composition for Phase 3. Domain modules attach here one at a
@@ -35,6 +36,9 @@ import { RealtimeModule } from './common/realtime/realtime.module';
  * Step 3.5 online: the real-time bridge — staff Socket.IO channel (Contract
  * §4), customer SSE stream (Contract §5, in the orders module), in-memory
  * presence events (B1), and the real-time health check (Monitoring §4).
+ * Step 3.6 online: notifications (FR33) — event-driven creation as an
+ * isolated bus side-effect (B5(a)), the two frozen REST routes, and
+ * `notification.created` delivery through the existing bridge.
  */
 @Module({
   imports: [
@@ -54,6 +58,7 @@ import { RealtimeModule } from './common/realtime/realtime.module';
     OrdersModule,
     BillingModule,
     RealtimeModule,
+    NotificationsModule,
     IdempotencyModule,
     HealthModule,
   ],

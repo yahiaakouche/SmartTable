@@ -7,3 +7,4 @@ export * from './tables';
 export * from './orders';
 export * from './billing';
 export * from './realtime';
+export * from './notifications';
