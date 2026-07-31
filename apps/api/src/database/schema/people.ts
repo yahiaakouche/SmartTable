@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, check } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, check, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { uuidPk, boolFlag, createdAtColumn } from './_columns';
 
@@ -27,12 +27,19 @@ export const employees = sqliteTable(
 
 /** Fine-tuning layer over the hard-coded Guard baseline — Security Architecture §2.
  * Can only restrict further than the code-level baseline, never loosen it. */
-export const rolePermissions = sqliteTable('role_permissions', {
-  id: uuidPk(),
-  role: text('role').notNull(),
-  permissionKey: text('permission_key').notNull(),
-  allowed: boolFlag('allowed').notNull(),
-});
+export const rolePermissions = sqliteTable(
+  'role_permissions',
+  {
+    id: uuidPk(),
+    role: text('role').notNull(),
+    permissionKey: text('permission_key').notNull(),
+    allowed: boolFlag('allowed').notNull(),
+  },
+  (table) => ({
+    // Database Schema Design, Appendix B — permission lookup is always per-role.
+    roleIdx: index('idx_role_permissions_role').on(table.role),
+  }),
+);
 
 export const invitations = sqliteTable(
   'invitations',
@@ -49,6 +56,9 @@ export const invitations = sqliteTable(
     createdAt: createdAtColumn(),
   },
   (table) => ({
+    // Database Schema Design, Appendix B — "all invitations for this employee"
+    // is the lookup path behind the Owner's employee roster screen.
+    employeeIdx: index('idx_invitations_employee').on(table.employeeId),
     statusCheck: check(
       'chk_invitations_status',
       sql`${table.status} IN ('pending','accepted','revoked','expired')`,
