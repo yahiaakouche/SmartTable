@@ -8,6 +8,13 @@
       "when": 1785458234997,
       "tag": "0000_cool_leech",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785507539416,
+      "tag": "0001_daffy_bishop",
+      "breakpoints": true
     }
   ]
 }

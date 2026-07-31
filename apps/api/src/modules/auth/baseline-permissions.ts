@@ -34,4 +34,26 @@ export const BASELINE_PERMISSIONS: Readonly<Record<PermissionKey, readonly Emplo
   // The waiter's loop-closing action (API Contract §3) — Owner/Manager may
   // perform any waiter floor action, consistent with the matrix's other rows.
   [PermissionKey.TABLES_MARK_CLEANED]: [EmployeeRole.OWNER, EmployeeRole.MANAGER, EmployeeRole.WAITER],
+
+  // Step 3.3 — orders slice. Every row below is a Step 3.3 FINAL ruling or a
+  // frozen FR; see permissions.ts for the per-key citations.
+  [PermissionKey.ORDERS_VIEW]: [
+    EmployeeRole.OWNER,
+    EmployeeRole.MANAGER,
+    EmployeeRole.CASHIER,
+    EmployeeRole.WAITER,
+    EmployeeRole.KITCHEN,
+  ],
+  // Q6 — staff order entry: Owner, Manager, Waiter.
+  [PermissionKey.ORDERS_CREATE]: [EmployeeRole.OWNER, EmployeeRole.MANAGER, EmployeeRole.WAITER],
+  // Q2 — acceptance: Owner, Manager, Kitchen. Waiter deliberately excluded
+  // (narrows the PRD §11 matrix; the ruling is authoritative).
+  [PermissionKey.ORDERS_ACCEPT]: [EmployeeRole.OWNER, EmployeeRole.MANAGER, EmployeeRole.KITCHEN],
+  // Q5 — preparation advance: Owner, Manager, Kitchen.
+  [PermissionKey.ORDERS_ADVANCE]: [EmployeeRole.OWNER, EmployeeRole.MANAGER, EmployeeRole.KITCHEN],
+  // FR7 — Served: Owner, Manager, Waiter.
+  [PermissionKey.ORDERS_SERVE]: [EmployeeRole.OWNER, EmployeeRole.MANAGER, EmployeeRole.WAITER],
+  // Q3 — cancellation baseline: Owner, Manager, Waiter; the waiter's
+  // pending-only refinement lives in the service-layer state machine.
+  [PermissionKey.ORDERS_CANCEL]: [EmployeeRole.OWNER, EmployeeRole.MANAGER, EmployeeRole.WAITER],
 };

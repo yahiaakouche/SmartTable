@@ -24,7 +24,7 @@ describe('Employee Invitation Acceptance (E2E critical path)', () => {
     const db = await openIsolatedTestDb();
     app = await createTestApp(
       Test.createTestingModule({ imports: [AppModule] }).overrideProvider(DRIZZLE_CLIENT).useValue(db),
-      { globalPrefix: 'api/v1' }, // mirrors main.ts exactly
+      { globalPrefix: 'api/v1', moduleProvidesInterceptors: true }, // mirrors main.ts exactly
     );
     await seedEmployee(getDb(app), { name: 'Karim', role: 'owner', password: 'owner-secret-1' });
   }, 60_000);

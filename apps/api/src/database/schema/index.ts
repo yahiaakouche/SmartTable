@@ -3,6 +3,7 @@ export * from './people';
 export * from './tables';
 export * from './menu';
 export * from './orders';
+export * from './idempotency';
 export * from './billing';
 export * from './audit';
 export * from './analytics';

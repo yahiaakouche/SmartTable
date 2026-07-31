@@ -1,6 +1,6 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@nestjs/common';
 import { Response } from 'express';
-import { DomainException } from '../exceptions/domain.exception';
+import { DomainException, IdempotencyKeyReusedException } from '../exceptions/domain.exception';
 
 /**
  * Every error response in the system passes through here — the single place
@@ -18,6 +18,15 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+
+    // API Contract §2 — IDEMPOTENCY_KEY_REUSED is "not an error per se":
+    // a distinct response path that returns HTTP 200 with the ORIGINAL
+    // (already-enveloped) response body, verbatim — never the error envelope.
+    if (exception instanceof IdempotencyKeyReusedException) {
+      this.logger.log('Idempotent replay — returning the original response (200).');
+      response.status(200).json(exception.replayBody);
+      return;
+    }
 
     if (exception instanceof DomainException) {
       this.logger.log(`Domain exception: ${exception.code} — ${exception.message}`);

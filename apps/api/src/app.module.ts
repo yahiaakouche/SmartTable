@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
+import { IdempotencyInterceptor } from './common/idempotency/idempotency.interceptor';
+import { IdempotencyModule } from './common/idempotency/idempotency.module';
 import { EventsModule } from './common/events/events.module';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
@@ -12,6 +14,7 @@ import { InvitationsModule } from './modules/invitations/invitations.module';
 import { EmployeesModule } from './modules/employees/employees.module';
 import { MenuModule } from './modules/menu/menu.module';
 import { TablesModule } from './modules/tables/tables.module';
+import { OrdersModule } from './modules/orders/orders.module';
 
 /**
  * Foundation composition for Phase 3. Domain modules attach here one at a
@@ -22,6 +25,8 @@ import { TablesModule } from './modules/tables/tables.module';
  * identity slice every later domain module depends on.
  * Step 3.2 online: menu, tables (+ the frozen internal event bus) — the
  * floor & catalog slice the orders domain builds on next.
+ * Step 3.3 online: orders (+ idempotency infrastructure, ruling Q1) — the
+ * order lifecycle up to Served; billing/transitions beyond remain Step 3.4.
  */
 @Module({
   imports: [
@@ -38,12 +43,18 @@ import { TablesModule } from './modules/tables/tables.module';
     EmployeesModule,
     MenuModule,
     TablesModule,
+    OrdersModule,
+    IdempotencyModule,
     HealthModule,
   ],
   providers: [
     // Global rate limiting (Security §5) — route classes override via
     // @Throttle; everything else gets the generous default above.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Idempotency (Contract §1, ruling Q1) must be the OUTERMOST interceptor:
+    // it memoizes the exact enveloped body the client received, so replays
+    // are byte-identical to the original response.
+    { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
     // Uniform success envelope { data, meta? } (API Contract Design §1).
     { provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor },
   ],

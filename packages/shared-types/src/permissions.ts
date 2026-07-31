@@ -29,4 +29,25 @@ export enum PermissionKey {
   /** Mark a cleaned table available again — the waiter's loop-closing action
    * (API Contract §3): Owner, Manager, Waiter. */
   TABLES_MARK_CLEANED = 'tables.mark_cleaned',
+
+  /** View orders (KDS board, table map, order detail) — all roles; the
+   * Kitchen view is price-stripped per FR6/Q7, enforced service-side. */
+  ORDERS_VIEW = 'orders.view',
+  /** Create orders (staff manual entry and add-on orders) — Q6 ruling:
+   * Owner, Manager, Waiter. */
+  ORDERS_CREATE = 'orders.create',
+  /** Accept pending orders — Q2 ruling: Owner, Manager, Kitchen.
+   * (This deliberately narrows the PRD §11 matrix, which also listed
+   * Waiter; the Step 3.3 ruling is authoritative.) */
+  ORDERS_ACCEPT = 'orders.accept',
+  /** Advance preparation status (accepted→preparing→ready) — Q5 ruling:
+   * Owner, Manager, Kitchen. */
+  ORDERS_ADVANCE = 'orders.advance',
+  /** Mark an order served — FR7: Owner, Manager, Waiter only. */
+  ORDERS_SERVE = 'orders.serve',
+  /** Cancel an order (reason mandatory, FR10) — Q3 ruling: Owner and
+   * Manager unrestricted; Waiter only while the order is still Pending
+   * (the pending-only refinement is enforced in the service-layer state
+   * machine, not expressible in a static baseline row). */
+  ORDERS_CANCEL = 'orders.cancel',
 }

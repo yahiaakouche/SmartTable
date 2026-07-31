@@ -124,3 +124,83 @@ export class InvitationAlreadyAcceptedException extends DomainException {
     super(`Invitation ${invitationId} has already been accepted.`, { invitationId });
   }
 }
+
+/** API Contract §2 — generic 400 for request-shape problems a DTO cannot
+ * express (e.g. a malformed opaque pagination cursor). */
+export class ValidationFailedException extends DomainException {
+  readonly code = 'VALIDATION_FAILED';
+  readonly httpStatus = 400;
+
+  constructor(message: string, details?: Record<string, unknown>) {
+    super(message, details);
+  }
+}
+
+/** Order Lifecycle state machine (PRD §12) — the requested transition is not
+ * legal from the order's current status. The state machine inside the orders
+ * service is the single source of truth for legality (Contract §3 advance
+ * design note); this is how it says "no". Module-level extension of the
+ * frozen error catalog (API Contract §2). */
+export class InvalidOrderTransitionException extends DomainException {
+  readonly code = 'INVALID_ORDER_TRANSITION';
+  readonly httpStatus = 409;
+
+  constructor(orderId: string, fromStatus: string, attemptedAction: string) {
+    super(`Order ${orderId} is '${fromStatus}' — '${attemptedAction}' is not a legal transition from this status.`, {
+      orderId,
+      fromStatus,
+      attemptedAction,
+    });
+  }
+}
+
+/** Q9 ruling — an order is rejected as a whole (never partially accepted)
+ * when any requested product cannot be sold: unknown product, marked
+ * unavailable, or under an inactive category. 409 with the full per-product
+ * breakdown so the client can show exactly what to remove. */
+export class ProductUnavailableException extends DomainException {
+  readonly code = 'PRODUCT_UNAVAILABLE';
+  readonly httpStatus = 409;
+
+  constructor(unavailableProductIds: string[]) {
+    super(`One or more requested products are not available. The order was not created.`, {
+      unavailableProductIds,
+    });
+  }
+}
+
+/** API Contract §1 — the `Idempotency-Key` header is REQUIRED on the
+ * order/payment creation endpoints; without it safe retries are impossible. */
+export class IdempotencyKeyRequiredException extends DomainException {
+  readonly code = 'IDEMPOTENCY_KEY_REQUIRED';
+  readonly httpStatus = 400;
+
+  constructor(endpoint: string) {
+    super(`The 'Idempotency-Key' header is required on ${endpoint}.`, { endpoint });
+  }
+}
+
+/** API Contract §2 — "not an error per se": the same key + same endpoint +
+ * same request body has already completed successfully, so the ORIGINAL
+ * response is returned instead of executing the operation a second time.
+ * The exception filter renders `replayBody` verbatim with HTTP 200. */
+export class IdempotencyKeyReusedException extends DomainException {
+  readonly code = 'IDEMPOTENCY_KEY_REUSED';
+  readonly httpStatus = 200;
+
+  constructor(readonly replayBody: unknown) {
+    super('This request has already been processed; returning the original response.');
+  }
+}
+
+/** The same idempotency key arrived with a DIFFERENT request body, or the
+ * first request carrying this key is still in flight — the client must not
+ * reuse keys across logically different requests. */
+export class IdempotencyKeyConflictException extends DomainException {
+  readonly code = 'IDEMPOTENCY_KEY_CONFLICT';
+  readonly httpStatus = 409;
+
+  constructor(message: string) {
+    super(message);
+  }
+}

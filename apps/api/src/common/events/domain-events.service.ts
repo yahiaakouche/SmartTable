@@ -8,6 +8,9 @@ import { EventEmitter } from 'events';
 export const DOMAIN_EVENT = {
   PRODUCT_AVAILABILITY_CHANGED: 'product.availability_changed',
   TABLE_STATUS_CHANGED: 'table.status_changed',
+  ORDER_CREATED: 'order.created',
+  ORDER_ACCEPTED: 'order.accepted',
+  ORDER_STATUS_CHANGED: 'order.status_changed',
 } as const;
 
 export interface ProductAvailabilityChangedPayload {
@@ -17,6 +20,18 @@ export interface ProductAvailabilityChangedPayload {
 
 export interface TableStatusChangedPayload {
   tableId: string;
+  fromStatus: string;
+  toStatus: string;
+}
+
+/** API Contract §4 — `order.created` / `order.accepted` carry the full
+ * GET /orders/:id response shape; per-room shaping (e.g. FR6 price stripping
+ * for the kitchen room) is the future Socket.IO bridge's concern. Typed as a
+ * generic record here so the bus never depends on module internals. */
+export type OrderDtoPayload = Record<string, unknown>;
+
+export interface OrderStatusChangedPayload {
+  orderId: string;
   fromStatus: string;
   toStatus: string;
 }
@@ -41,6 +56,18 @@ export class DomainEventsService {
 
   emitTableStatusChanged(payload: TableStatusChangedPayload): void {
     this.emitter.emit(DOMAIN_EVENT.TABLE_STATUS_CHANGED, payload);
+  }
+
+  emitOrderCreated(payload: OrderDtoPayload): void {
+    this.emitter.emit(DOMAIN_EVENT.ORDER_CREATED, payload);
+  }
+
+  emitOrderAccepted(payload: OrderDtoPayload): void {
+    this.emitter.emit(DOMAIN_EVENT.ORDER_ACCEPTED, payload);
+  }
+
+  emitOrderStatusChanged(payload: OrderStatusChangedPayload): void {
+    this.emitter.emit(DOMAIN_EVENT.ORDER_STATUS_CHANGED, payload);
   }
 
   /** Subscription path for the future real-time bridge — and for tests today. */
