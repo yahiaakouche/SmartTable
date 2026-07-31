@@ -54,6 +54,21 @@ export class AppConfig {
   @IsInt()
   @Min(1)
   REFRESH_TOKEN_TTL_DAYS: number = 30;
+
+  /** Local directory for re-encoded uploads (product images now, restaurant
+   * logo when the config module lands) — Database Schema Design stores the
+   * path (`image_path`/`logo_path`), never the bytes. Relative paths resolve
+   * against the Host's working directory, like DATABASE_FILE_PATH. */
+  @IsOptional()
+  @IsString()
+  UPLOAD_DIRECTORY: string = 'uploads';
+
+  /** Security Architecture §6 — per-file upload ceiling (default 5 MB).
+   * Upload size is also an input to the Host's disk-space monitoring. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  UPLOAD_MAX_FILE_SIZE_BYTES: number = 5 * 1024 * 1024;
 }
 
 /**

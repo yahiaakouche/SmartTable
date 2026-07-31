@@ -17,3 +17,4 @@ process.env.HTTPS_PORT = '13443';
 process.env.JWT_SIGNING_KEY = 'test-only-signing-key-not-for-production';
 process.env.LOG_DIRECTORY = path.join(scratch, 'logs');
 process.env.BACKUP_DIRECTORY = path.join(scratch, 'backups');
+process.env.UPLOAD_DIRECTORY = path.join(scratch, 'uploads');

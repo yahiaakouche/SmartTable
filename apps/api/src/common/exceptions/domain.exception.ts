@@ -53,6 +53,34 @@ export class TableHasActiveOrderException extends DomainException {
   }
 }
 
+/** Table status machine — e.g. mark-cleaned attempted on a table that is not
+ * `needs_cleaning`. Module-level extension of the frozen error catalog
+ * (API Contract §2 explicitly allows per-module extension via DomainException). */
+export class InvalidTableStatusTransitionException extends DomainException {
+  readonly code = 'INVALID_TABLE_STATUS_TRANSITION';
+  readonly httpStatus = 409;
+
+  constructor(tableId: string, fromStatus: string, attemptedAction: string) {
+    super(`Table ${tableId} is '${fromStatus}' — '${attemptedAction}' is not a legal action in this state.`, {
+      tableId,
+      fromStatus,
+      attemptedAction,
+    });
+  }
+}
+
+/** Security Architecture §6 — upload rejected (bad magic bytes, disallowed
+ * format such as SVG, or over the configured size limit). Module-level
+ * extension of the frozen error catalog (API Contract §2). */
+export class InvalidFileUploadException extends DomainException {
+  readonly code = 'INVALID_FILE_UPLOAD';
+  readonly httpStatus = 400;
+
+  constructor(reason: string) {
+    super(`Upload rejected: ${reason}`);
+  }
+}
+
 /** API Contract Design §2 — missing/expired/invalid JWT or failed credential check. */
 export class UnauthenticatedException extends DomainException {
   readonly code = 'UNAUTHENTICATED';
