@@ -32,11 +32,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     if (exception instanceof HttpException) {
-      // class-validator / Nest built-in exceptions (e.g., ValidationPipe failures)
+      // class-validator / Nest built-in exceptions (e.g., ValidationPipe failures),
+      // and ThrottlerException — Security Architecture §5 requires the 429
+      // response to carry the frozen RATE_LIMITED code, not a generic one.
       const status = exception.getStatus();
       response.status(status).json({
         error: {
-          code: status === 400 ? 'VALIDATION_FAILED' : 'HTTP_ERROR',
+          code: status === 400 ? 'VALIDATION_FAILED' : status === 429 ? 'RATE_LIMITED' : 'HTTP_ERROR',
           message: exception.message,
         },
       });

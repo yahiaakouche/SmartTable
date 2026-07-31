@@ -1,0 +1,12 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "roots": ["<rootDir>/test"],
+  "testRegex": ".e2e-spec.ts$",
+  "transform": { "^.+\\.(t|j)s$": "ts-jest" },
+  "moduleNameMapper": {
+    "^@smarttable/shared-types$": "<rootDir>/../../packages/shared-types/src"
+  },
+  "setupFiles": ["<rootDir>/test/setup-env.ts"]
+}

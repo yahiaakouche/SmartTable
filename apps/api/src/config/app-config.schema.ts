@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { IsInt, IsString, Min, validateSync } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, Min, validateSync } from 'class-validator';
 
 /**
  * Typed configuration schema — Engineering Standards §9.
@@ -31,6 +31,29 @@ export class AppConfig {
 
   @IsString()
   BACKUP_DIRECTORY!: string;
+
+  // --- Tunable thresholds (Engineering Standards §9 — never magic numbers in
+  // business logic). All optional: the defaults below are the frozen product
+  // defaults, overridable per installation without a code change.
+
+  /** FR26 — invitation expiry, default 7 days, adjustable up to 30. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(30)
+  INVITATION_EXPIRY_DAYS: number = 7;
+
+  /** API Contract Design §1 — acting-employee JWT lifetime (15 minutes). */
+  @IsOptional()
+  @IsInt()
+  @Min(60)
+  JWT_ACCESS_TTL_SECONDS: number = 900;
+
+  /** Security Architecture §1 — Device Trust refresh token lifetime (30 days). */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  REFRESH_TOKEN_TTL_DAYS: number = 30;
 }
 
 /**

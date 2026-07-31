@@ -52,3 +52,47 @@ export class TableHasActiveOrderException extends DomainException {
     super(`Table ${tableId} cannot be removed while it has an active order.`, { tableId });
   }
 }
+
+/** API Contract Design §2 — missing/expired/invalid JWT or failed credential check. */
+export class UnauthenticatedException extends DomainException {
+  readonly code = 'UNAUTHENTICATED';
+  readonly httpStatus = 401;
+
+  constructor(message = 'Authentication required or credentials invalid.') {
+    super(message);
+  }
+}
+
+/** Security Architecture §1 — PIN lockout after 5 consecutive failures.
+ * 401 (authentication-class failure) with the remaining cooldown as detail
+ * so the terminal UI can show "try again in N minutes". */
+export class AccountLockedException extends DomainException {
+  readonly code = 'ACCOUNT_LOCKED';
+  readonly httpStatus = 401;
+
+  constructor(retryAfterSeconds: number) {
+    super(`Account is temporarily locked due to repeated failed attempts. Try again later.`, {
+      retryAfterSeconds,
+    });
+  }
+}
+
+/** API Contract Design §2 — entity does not exist. */
+export class EntityNotFoundException extends DomainException {
+  readonly code = 'NOT_FOUND';
+  readonly httpStatus = 404;
+
+  constructor(entityType: string, entityId: string) {
+    super(`${entityType} ${entityId} does not exist.`, { entityType, entityId });
+  }
+}
+
+/** API Contract Design §2 — invitation token has already been consumed (single-use, FR26). */
+export class InvitationAlreadyAcceptedException extends DomainException {
+  readonly code = 'INVITATION_ALREADY_ACCEPTED';
+  readonly httpStatus = 409;
+
+  constructor(invitationId: string) {
+    super(`Invitation ${invitationId} has already been accepted.`, { invitationId });
+  }
+}
