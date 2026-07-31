@@ -56,4 +56,14 @@ export const BASELINE_PERMISSIONS: Readonly<Record<PermissionKey, readonly Emplo
   // Q3 — cancellation baseline: Owner, Manager, Waiter; the waiter's
   // pending-only refinement lives in the service-layer state machine.
   [PermissionKey.ORDERS_CANCEL]: [EmployeeRole.OWNER, EmployeeRole.MANAGER, EmployeeRole.WAITER],
+
+  // Step 3.4 — billing slice. Every row below is the D10 ruling: Owner,
+  // Manager, Cashier (Cashier is the financial operator — PRD §6 Cashier
+  // Journey, FR8; Waiter/Kitchen have no financial surface per PRD §11).
+  [PermissionKey.BILLING_VIEW]: [EmployeeRole.OWNER, EmployeeRole.MANAGER, EmployeeRole.CASHIER],
+  [PermissionKey.PAYMENTS_PROCESS]: [EmployeeRole.OWNER, EmployeeRole.MANAGER, EmployeeRole.CASHIER],
+  [PermissionKey.SHIFTS_MANAGE]: [EmployeeRole.OWNER, EmployeeRole.MANAGER, EmployeeRole.CASHIER],
+  // PRD §11 "Own shift only" for the Cashier is a service-layer scoping
+  // refinement (D6), not expressible in this static row.
+  [PermissionKey.SHIFTS_VIEW]: [EmployeeRole.OWNER, EmployeeRole.MANAGER, EmployeeRole.CASHIER],
 };

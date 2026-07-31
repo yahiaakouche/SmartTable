@@ -15,6 +15,7 @@ import { EmployeesModule } from './modules/employees/employees.module';
 import { MenuModule } from './modules/menu/menu.module';
 import { TablesModule } from './modules/tables/tables.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 /**
  * Foundation composition for Phase 3. Domain modules attach here one at a
@@ -26,7 +27,10 @@ import { OrdersModule } from './modules/orders/orders.module';
  * Step 3.2 online: menu, tables (+ the frozen internal event bus) — the
  * floor & catalog slice the orders domain builds on next.
  * Step 3.3 online: orders (+ idempotency infrastructure, ruling Q1) — the
- * order lifecycle up to Served; billing/transitions beyond remain Step 3.4.
+ * order lifecycle up to Served.
+ * Step 3.4 online: billing (payments + shifts + synchronous rollups) — the
+ * lifecycle's financial end: Paid/Completed, bill-group close, table →
+ * needs_cleaning.
  */
 @Module({
   imports: [
@@ -44,6 +48,7 @@ import { OrdersModule } from './modules/orders/orders.module';
     MenuModule,
     TablesModule,
     OrdersModule,
+    BillingModule,
     IdempotencyModule,
     HealthModule,
   ],

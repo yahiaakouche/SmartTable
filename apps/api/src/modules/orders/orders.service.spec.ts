@@ -7,6 +7,7 @@ import {
   EntityNotFoundException,
   InsufficientPermissionException,
   InvalidOrderTransitionException,
+  InvalidTableStatusTransitionException,
   ProductUnavailableException,
   ValidationFailedException,
 } from '../../common/exceptions/domain.exception';
@@ -167,6 +168,19 @@ describe('OrdersService', () => {
       await service.createStaffOrder(input, actor(EmployeeRole.WAITER));
       expect(events.emitTableStatusChanged).not.toHaveBeenCalled();
     });
+
+    it.each(['bill_requested', 'needs_cleaning'])(
+      'rejects order creation on a %s table with 409 INVALID_TABLE_STATUS_TRANSITION (D8)',
+      async (tableStatus) => {
+        repository.findTableById.mockResolvedValue(tableRow({ status: tableStatus }) as never);
+        repository.createOrderTransaction.mockResolvedValue({ outcome: 'table_not_orderable', tableStatus });
+        const error: any = await service.createStaffOrder(input, actor(EmployeeRole.WAITER)).catch((e) => e);
+        expect(error).toBeInstanceOf(InvalidTableStatusTransitionException);
+        expect(error.code).toBe('INVALID_TABLE_STATUS_TRANSITION');
+        expect(error.httpStatus).toBe(409);
+        expect(error.details).toMatchObject({ tableId: 'table-1', fromStatus: tableStatus, attemptedAction: 'create-order' });
+      },
+    );
   });
 
   describe('createPublicOrder', () => {
@@ -403,6 +417,21 @@ describe('OrdersService', () => {
         InvalidOrderTransitionException,
       );
     });
+
+    it.each(['paid', 'completed'])(
+      'rejects cancelling a %s order with 409 INVALID_ORDER_TRANSITION for EVERY role (B2: no refunds/voids in v1)',
+      async (from) => {
+        // Owner is the most privileged role in the cancel rule — if the Owner
+        // cannot do it, nobody can.
+        arrangeTransition(from);
+        const error: any = await service.cancel('order-1', 'refund attempt', actor(EmployeeRole.OWNER)).catch((e) => e);
+        expect(error).toBeInstanceOf(InvalidOrderTransitionException);
+        expect(error.code).toBe('INVALID_ORDER_TRANSITION');
+        expect(error.httpStatus).toBe(409);
+        expect(error.details).toMatchObject({ orderId: 'order-1', fromStatus: from, attemptedAction: 'cancel' });
+        expect(repository.transitionStatusTransaction).not.toHaveBeenCalled();
+      },
+    );
   });
 
   // ---------------------------------------------------------------- reads

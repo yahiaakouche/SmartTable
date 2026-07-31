@@ -50,4 +50,19 @@ export enum PermissionKey {
    * (the pending-only refinement is enforced in the service-layer state
    * machine, not expressible in a static baseline row). */
   ORDERS_CANCEL = 'orders.cancel',
+
+  /** View the consolidated table bill (GET /billing/table-bill-groups/:id) —
+   * D10 ruling: Owner, Manager, Cashier (the cashier's core screen, PRD §6;
+   * Waiter/Kitchen have no financial view per PRD §11). */
+  BILLING_VIEW = 'billing.view',
+  /** Record a cash payment (POST /payments) — FR8: Paid/Completed are set
+   * exclusively by Cashier, Manager, or Owner. */
+  PAYMENTS_PROCESS = 'payments.process',
+  /** Open/close a shift — MVP Scope Freeze: "Shift open/close tracking
+   * (Cashier-level)"; D10: Owner, Manager, Cashier. The own-shift scoping
+   * (a cashier touches only their own shift — D6) is service-layer. */
+  SHIFTS_MANAGE = 'shifts.manage',
+  /** View a shift — PRD §11: Cashier sees "Own shift only" (scoping enforced
+   * in the service); Owner/Manager unrestricted. */
+  SHIFTS_VIEW = 'shifts.view',
 }

@@ -204,3 +204,60 @@ export class IdempotencyKeyConflictException extends DomainException {
     super(message);
   }
 }
+
+// ---------------------------------------------------------------- billing
+
+/** Ruling D1 — a Table Bill Group can only be paid once EVERY order in it has
+ * reached a terminal-or-served state: orders still in flight (pending /
+ * accepted / preparing / ready) block payment, and a group with nothing
+ * billable (all orders cancelled) has no bill to pay. Module-level extension
+ * of the frozen error catalog (API Contract §2). */
+export class PaymentNotReadyException extends DomainException {
+  readonly code = 'PAYMENT_NOT_READY';
+  readonly httpStatus = 409;
+
+  constructor(tableBillGroupId: string, blockingOrderIds: string[]) {
+    super(
+      blockingOrderIds.length > 0
+        ? `Table bill group ${tableBillGroupId} cannot be paid yet — some orders are still in progress.`
+        : `Table bill group ${tableBillGroupId} has nothing to pay — every order in it was cancelled.`,
+      { tableBillGroupId, blockingOrderIds },
+    );
+  }
+}
+
+/** Ruling D2 — exactly one payment per Table Bill Group in v1 (no split bill);
+ * a second payment attempt against an already-paid group conflicts. */
+export class PaymentAlreadyRecordedException extends DomainException {
+  readonly code = 'PAYMENT_ALREADY_RECORDED';
+  readonly httpStatus = 409;
+
+  constructor(tableBillGroupId: string, paymentId: string | null) {
+    super(`Table bill group ${tableBillGroupId} has already been paid.`, { tableBillGroupId, paymentId });
+  }
+}
+
+/** Ruling D6 — one open shift per employee at a time; opening a second one
+ * while another is still open conflicts. */
+export class ShiftAlreadyOpenException extends DomainException {
+  readonly code = 'SHIFT_ALREADY_OPEN';
+  readonly httpStatus = 409;
+
+  constructor(employeeId: string, openShiftId: string) {
+    super(`Employee ${employeeId} already has an open shift. Close it before opening a new one.`, {
+      employeeId,
+      openShiftId,
+    });
+  }
+}
+
+/** Closing a shift that is already closed conflicts (the reconciliation was
+ * already computed and recorded — it must never be recomputed silently). */
+export class ShiftAlreadyClosedException extends DomainException {
+  readonly code = 'SHIFT_ALREADY_CLOSED';
+  readonly httpStatus = 409;
+
+  constructor(shiftId: string) {
+    super(`Shift ${shiftId} is already closed.`, { shiftId });
+  }
+}

@@ -15,6 +15,7 @@ import {
   orderStatusEvents,
   products,
   refreshTokens,
+  salesRollupDaily,
   tableBillGroups,
   tables,
 } from '../../database/schema';
@@ -539,6 +540,39 @@ describe('OrdersModule (integration)', () => {
     expect(() =>
       raw.prepare(`UPDATE orders SET status = 'cancelled', cancellation_reason = NULL WHERE id = ?`).run(pendingOrder),
     ).toThrow(/CHECK constraint failed: chk_orders_cancellation_reason/);
+  });
+
+  it('D5: a cancellation increments the daily cancelled_orders rollup atomically with the transition', async () => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const [before] = await db().select().from(salesRollupDaily).where(eq(salesRollupDaily.date, today));
+
+    const orderId = await createPendingOrder();
+    const cancelled = await request(app.getHttpServer())
+      .post(`/orders/${orderId}/cancel`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ reason: 'D5 counter check' });
+    expect(cancelled.status).toBe(201);
+
+    const [after] = await db().select().from(salesRollupDaily).where(eq(salesRollupDaily.date, today));
+    expect(after.cancelledOrders).toBe((before?.cancelledOrders ?? 0) + 1);
+    // A cancellation carries no revenue and does not count as a completed order.
+    expect(after.totalRevenueMinor).toBe(before?.totalRevenueMinor ?? 0);
+    expect(after.totalOrders).toBe(before?.totalOrders ?? 0);
+  });
+
+  it('D8: tables in bill_requested or needs_cleaning accept no new orders (409 INVALID_TABLE_STATUS_TRANSITION)', async () => {
+    const product = await seedProduct();
+    for (const status of ['bill_requested', 'needs_cleaning']) {
+      const table = await seedTable({ status });
+      const res = await staffCreateOrder(waiterToken, table.id, [{ productId: product.id, quantity: 1 }]);
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('INVALID_TABLE_STATUS_TRANSITION');
+      expect(res.body.error.details).toMatchObject({ fromStatus: status, attemptedAction: 'create-order' });
+      // Nothing persists: no order, no bill group, table status untouched.
+      expect(await db().select().from(orders).where(eq(orders.tableId, table.id))).toHaveLength(0);
+      expect(await db().select().from(tableBillGroups).where(eq(tableBillGroups.tableId, table.id))).toHaveLength(0);
+    }
   });
 
   it('cashier and kitchen cannot cancel at all (baseline)', async () => {

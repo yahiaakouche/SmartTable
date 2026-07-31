@@ -11,6 +11,7 @@ import {
   tableBillGroups,
   tables,
 } from '../../database/schema';
+import { incrementCancelledOrderRollup, rollupBucketFor } from '../../database/rollups';
 
 export const ORDERS_REPOSITORY = Symbol('ORDERS_REPOSITORY');
 
@@ -46,7 +47,12 @@ export type CreateOrderResult =
     }
   | { outcome: 'products_not_found'; productIds: string[] }
   | { outcome: 'products_unavailable'; productIds: string[] }
-  | { outcome: 'bill_group_not_open' };
+  | { outcome: 'bill_group_not_open' }
+  /** Ruling D8 (Step 3.4) — a table whose visit is financially closing or
+   * closed (`bill_requested` / `needs_cleaning`) accepts NO new orders: the
+   * current bill must settle and the table must be cleaned before a new visit
+   * can start. Checked inside the write transaction, never as a stale pre-read. */
+  | { outcome: 'table_not_orderable'; tableStatus: string };
 
 export interface ListOrdersFilter {
   status?: string;
@@ -143,7 +149,16 @@ export class DrizzleOrdersRepository implements OrdersRepository {
       });
       if (unavailable.length > 0) return { outcome: 'products_unavailable', productIds: unavailable } as const;
 
-      // 2. Table Bill Group — pinned by the add-on path, otherwise
+      // 2. Table-state guard (D8, Step 3.4) — `bill_requested` and
+      //    `needs_cleaning` tables accept no new orders. Judged INSIDE this
+      //    transaction so a concurrently committing payment can never race a
+      //    new order onto a table whose visit is closing.
+      const tableRow = tx.select().from(tables).where(eq(tables.id, input.tableId)).all()[0];
+      if (tableRow && (tableRow.status === 'bill_requested' || tableRow.status === 'needs_cleaning')) {
+        return { outcome: 'table_not_orderable', tableStatus: tableRow.status } as const;
+      }
+
+      // 3. Table Bill Group — pinned by the add-on path, otherwise
       //    find-or-create (FR34: auto-open on the table's first order).
       let group: typeof tableBillGroups.$inferSelect | undefined;
       let groupCreated = false;
@@ -162,7 +177,7 @@ export class DrizzleOrdersRepository implements OrdersRepository {
         }
       }
 
-      // 3. is_addon derivation: every order after the first in a group is an
+      // 4. is_addon derivation: every order after the first in a group is an
       //    Add-on Order (FR5/FR34); the pinned add-on path is one by definition.
       let isAddon = true;
       if (input.billGroupId === undefined) {
@@ -174,7 +189,7 @@ export class DrizzleOrdersRepository implements OrdersRepository {
         isAddon = (countRows[0]?.total ?? 0) > 0;
       }
 
-      // 4. The order row + immutable item snapshots (FR40) + the initial
+      // 5. The order row + immutable item snapshots (FR40) + the initial
       //    status event — all in this one transaction.
       const order = tx
         .insert(orders)
@@ -212,7 +227,7 @@ export class DrizzleOrdersRepository implements OrdersRepository {
         .values({ orderId: order.id, fromStatus: null, toStatus: 'pending', actorEmployeeId: input.createdByEmployeeId })
         .run();
 
-      // 5. The table's first order flips it available → occupied (compare-
+      // 6. The table's first order flips it available → occupied (compare-
       //    and-set on the expected status — if some other path already moved
       //    the table, we leave it alone and report no flip).
       let tableFlippedToOccupied = false;
@@ -288,6 +303,15 @@ export class DrizzleOrdersRepository implements OrdersRepository {
           actorEmployeeId: input.actorEmployeeId,
         })
         .run();
+
+      // Ruling D5 (Step 3.4): a cancellation increments the daily
+      // `cancelled_orders` rollup counter in the SAME transaction as the
+      // transition itself — crash-consistent with the order row, matching the
+      // frozen synchronous-rollup mechanism (Database Schema Design §8).
+      if (input.toStatus === 'cancelled') {
+        const now = Date.now();
+        incrementCancelledOrderRollup(tx, rollupBucketFor(now), now);
+      }
 
       return { outcome: 'ok', order: updated[0], fromStatus: current.status } as const;
     });

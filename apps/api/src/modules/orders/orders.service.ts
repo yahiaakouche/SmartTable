@@ -16,6 +16,7 @@ import {
   EntityNotFoundException,
   InsufficientPermissionException,
   InvalidOrderTransitionException,
+  InvalidTableStatusTransitionException,
   ProductUnavailableException,
   ValidationFailedException,
 } from '../../common/exceptions/domain.exception';
@@ -39,8 +40,11 @@ interface TransitionRule {
  * for what transitions are legal and who may perform them (API Contract §3
  * advance design note). Encoded as data, exactly as the contract requires.
  *
- * Step 3.3 scope ends at `served`; `paid`/`completed` belong to the billing
- * step and no path below can reach them.
+ * Step 3.4 note (ruling B2): `paid`/`completed` are now reachable — via the
+ * billing payment transaction only, never via these endpoints. Cancellation
+ * from either status is therefore IMPOSSIBLE here by construction: both are
+ * absent from cancel.expectedFrom, so any such attempt fails the from-check
+ * with 409 INVALID_ORDER_TRANSITION. No refund/void flow exists in v1.
  */
 const TRANSITION_RULES: Record<OrderAction, TransitionRule> = {
   // Q2 ruling: Owner, Manager, Kitchen — Waiter is NOT permitted (this
@@ -377,10 +381,13 @@ export class OrdersService {
       case 'products_unavailable':
         throw new ProductUnavailableException(result.productIds);
       case 'bill_group_not_open':
-        // Unreachable in Step 3.3 (nothing closes bill groups yet — that is
-        // the billing step); guarded so the add-on path can never silently
-        // attach an order to a closed group later.
+        // Reachable since Step 3.4 (payment closes bill groups): an add-on
+        // can never silently attach an order to a closed group.
         throw new InvalidOrderTransitionException(parentOrderId ?? tableId, 'bill-group-closed', 'addon');
+      case 'table_not_orderable':
+        // Ruling D8 — the visit is financially closing/closed; a new visit
+        // starts only after the table returns to `available` (mark-cleaned).
+        throw new InvalidTableStatusTransitionException(tableId, result.tableStatus, 'create-order');
     }
   }
 
