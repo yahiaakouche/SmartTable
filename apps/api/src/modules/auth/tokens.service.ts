@@ -41,6 +41,26 @@ export class TokensService {
     };
   }
 
+  /** Verifies an acting-employee access token OUTSIDE the HTTP guard chain —
+   * the Socket.IO handshake path (Step 3.5, ruling D2), where guards do not
+   * run. Mirrors JwtAuthGuard exactly: same signing key, `type === 'access'`,
+   * and a fresh DB reload so a deactivated employee cannot connect rather
+   * than merely failing their next REST call. */
+  async verifyAccessToken(token: string): Promise<EmployeeIdentity> {
+    let payload: { sub: string; type: string };
+    try {
+      payload = await this.jwtService.verifyAsync<{ sub: string; type: string }>(token, {
+        secret: this.config.getOrThrow<string>('JWT_SIGNING_KEY'),
+      });
+    } catch {
+      throw new UnauthenticatedException('Missing or expired access token.');
+    }
+    if (payload.type !== 'access') throw new UnauthenticatedException();
+    const employee = await this.authRepository.findEmployeeById(payload.sub);
+    if (!employee || !employee.isActive) throw new UnauthenticatedException();
+    return employee;
+  }
+
   /** Prepares a new Device Trust row without persisting it — callers that need
    * transactional insertion (invitation acceptance) use this, then return the
    * raw token to the client exactly once. */

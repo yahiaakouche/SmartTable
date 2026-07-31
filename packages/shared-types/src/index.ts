@@ -6,3 +6,4 @@ export * from './menu';
 export * from './tables';
 export * from './orders';
 export * from './billing';
+export * from './realtime';

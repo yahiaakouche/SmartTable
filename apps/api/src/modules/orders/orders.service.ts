@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { EmployeeRole, OrderStatus } from '@smarttable/shared-types';
+import { Observable } from 'rxjs';
+import { CUSTOMER_EVENT, EmployeeRole, OrderStatus } from '@smarttable/shared-types';
 import type {
   CreateAddonOrderRequest,
   CreateOrderRequest,
+  CustomerEventName,
   KitchenOrderDto,
   ListOrdersQuery,
   OrderDto,
@@ -11,7 +13,12 @@ import type {
 } from '@smarttable/shared-types';
 import { ORDERS_REPOSITORY, CreateOrderResult, OrderItemRow, OrderRow, OrdersRepository } from './orders.repository';
 import { AuditService } from '../audit/audit.service';
-import { DomainEventsService } from '../../common/events/domain-events.service';
+import {
+  DOMAIN_EVENT,
+  DomainEventsService,
+  OrderStatusChangedPayload,
+  ProductAvailabilityChangedPayload,
+} from '../../common/events/domain-events.service';
 import {
   EntityNotFoundException,
   InsufficientPermissionException,
@@ -25,6 +32,14 @@ import {
 export interface OrderActor {
   id: string;
   role: EmployeeRole;
+}
+
+/** One named message on the customer SSE stream (Contract §5). Transport-
+ * agnostic on purpose (ES §4): the controller maps this to the SSE wire
+ * format; the service never knows HTTP exists. */
+export interface OrderStreamMessage {
+  event: CustomerEventName;
+  data: unknown;
 }
 
 type OrderAction = 'accept' | 'advance' | 'serve' | 'cancel';
@@ -301,6 +316,53 @@ export class OrdersService {
     const order = await this.ordersRepository.findOrderById(id);
     if (!order) throw new EntityNotFoundException('order', id);
     return { id: order.id, status: order.status as OrderStatus };
+  }
+
+  /**
+   * Customer SSE stream (API Contract §5, rulings D7/D8) — read-only, no
+   * client→server messages by design (Real-Time Architecture §2.4, restated
+   * in §5). Messages:
+   *  - `status_changed`: the FIRST message is the initial snapshot (Q8's
+   *    `{id, status}` read), then one message per transition. Listeners are
+   *    attached BEFORE the snapshot read, so a transition landing between
+   *    read and subscribe cannot slip through — a duplicated status is
+   *    harmless (status display is idempotent), a missed final transition
+   *    would wedge the customer's screen.
+   *  - `menu_updated`: fired on `product.availability_changed` — the only
+   *    menu-affecting bus event in v1 — and pre-subscribed for
+   *    `restaurant_profile.changed` so the config step flows later with zero
+   *    changes here (D8). The customer client treats it as a refetch cue for
+   *    GET /public/menu/:qrToken.
+   * The stream stays open after terminal states: EventSource auto-reconnect
+   * would storm a server-closed stream against the 60/min class, so the
+   * client closes on terminal status instead (D7).
+   */
+  async streamPublicOrderEvents(id: string): Promise<Observable<OrderStreamMessage>> {
+    // Existence check up front: an unknown id fails as a normal HTTP 404
+    // before the event stream ever starts.
+    await this.getPublicOrderStatus(id);
+    return new Observable<OrderStreamMessage>((subscriber) => {
+      const offStatus = this.events.on(DOMAIN_EVENT.ORDER_STATUS_CHANGED, (payload) => {
+        const p = payload as OrderStatusChangedPayload;
+        if (p.orderId === id) {
+          subscriber.next({ event: CUSTOMER_EVENT.STATUS_CHANGED, data: { id, status: p.toStatus as OrderStatus } });
+        }
+      });
+      const offAvailability = this.events.on(DOMAIN_EVENT.PRODUCT_AVAILABILITY_CHANGED, (payload) => {
+        subscriber.next({ event: CUSTOMER_EVENT.MENU_UPDATED, data: payload as ProductAvailabilityChangedPayload });
+      });
+      const offProfile = this.events.on(DOMAIN_EVENT.RESTAURANT_PROFILE_CHANGED, (payload) => {
+        subscriber.next({ event: CUSTOMER_EVENT.MENU_UPDATED, data: payload });
+      });
+      void this.getPublicOrderStatus(id).then((snapshot) => {
+        subscriber.next({ event: CUSTOMER_EVENT.STATUS_CHANGED, data: snapshot });
+      });
+      return () => {
+        offStatus();
+        offAvailability();
+        offProfile();
+      };
+    });
   }
 
   // ----------------------------------------------------------- state machine

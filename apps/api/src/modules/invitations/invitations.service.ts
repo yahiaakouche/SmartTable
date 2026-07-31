@@ -11,6 +11,7 @@ import { INVITATIONS_REPOSITORY, InvitationsRepository } from './invitations.rep
 import { TokensService } from '../auth/tokens.service';
 import { AuthService } from '../auth/auth.service';
 import { AuditService } from '../audit/audit.service';
+import { DomainEventsService } from '../../common/events/domain-events.service';
 import {
   EntityNotFoundException,
   InvitationAlreadyAcceptedException,
@@ -40,6 +41,7 @@ export class InvitationsService {
     private readonly authService: AuthService,
     private readonly audit: AuditService,
     private readonly config: ConfigService,
+    private readonly events: DomainEventsService,
   ) {}
 
   /**
@@ -121,6 +123,10 @@ export class InvitationsService {
       action: 'invitation_accepted',
       newValueJson: JSON.stringify({ employeeId: employee.id, deviceLabel }),
     });
+
+    // Contract §4 — `invitation.accepted` to owner-room (FR33, ruling D6),
+    // emitted strictly after the acceptance transaction has committed.
+    this.events.emitInvitationAccepted({ invitationId: invitation!.id, employeeId: employee.id });
 
     return {
       ...this.tokens.issueAccessToken(employee),

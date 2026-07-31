@@ -28,6 +28,14 @@ export class HealthRegistryService {
     this.checks = [databaseCheck];
   }
 
+  /** The pluggable extension point named above (Monitoring §4): subsystems
+   * implemented in later steps (real-time channel, printer, disk space,
+   * backup status, update status) register their check as they come online —
+   * the first to do so is the real-time channel (Step 3.5, ruling D10). */
+  register(check: HealthCheck): void {
+    this.checks.push(check);
+  }
+
   async getAggregateHealth(): Promise<AggregateHealth> {
     const results: Record<string, HealthResult> = {};
 

@@ -4,6 +4,7 @@ import request from 'supertest';
 import { eq } from 'drizzle-orm';
 import { ConfigModule } from '../../config/config.module';
 import { DatabaseModule, DRIZZLE_CLIENT } from '../../database/database.module';
+import { EventsModule } from '../../common/events/events.module';
 import { employees, invitations, refreshTokens } from '../../database/schema';
 import { TokensService } from '../auth/tokens.service';
 import { AuditModule } from '../audit/audit.module';
@@ -38,7 +39,7 @@ describe('InvitationsModule (integration)', () => {
     const db = await openIsolatedTestDb();
     app = await createTestApp(
       Test.createTestingModule({
-        imports: [ConfigModule, DatabaseModule, AuditModule, AuthModule, InvitationsModule, EmployeesModule],
+        imports: [ConfigModule, DatabaseModule, EventsModule, AuditModule, AuthModule, InvitationsModule, EmployeesModule],
       })
         .overrideProvider(DRIZZLE_CLIENT)
         .useValue(db),

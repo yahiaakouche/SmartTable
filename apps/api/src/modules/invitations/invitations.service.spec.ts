@@ -31,6 +31,7 @@ describe('InvitationsService', () => {
   const authService = { hashCredentials: jest.fn() };
   const audit = { append: jest.fn() };
   const config = { get: jest.fn().mockReturnValue(7) };
+  const events = { emitInvitationAccepted: jest.fn() };
 
   let service: InvitationsService;
 
@@ -54,6 +55,7 @@ describe('InvitationsService', () => {
       authService as never,
       audit as never,
       config as unknown as ConfigService,
+      events as never,
     );
     invitationsRepository.findEmployeeIdentity.mockResolvedValue({ id: 'emp-1', name: 'Sofia', role: 'waiter' });
   });
@@ -125,6 +127,17 @@ describe('InvitationsService', () => {
       );
       expect(result.deviceRefreshToken).toBe('raw-refresh');
       expect(audit.append).toHaveBeenCalledWith(expect.objectContaining({ action: 'invitation_accepted' }));
+      // Contract §4 / ruling D6 — the real-time event fires post-commit so
+      // owner-room dashboards see the acceptance live (FR33).
+      expect(events.emitInvitationAccepted).toHaveBeenCalledWith({ invitationId: 'inv-1', employeeId: 'emp-1' });
+    });
+
+    it('does NOT emit invitation.accepted when acceptance fails pre-commit', async () => {
+      invitationsRepository.findByTokenHash.mockResolvedValue(invitationRow({ status: InvitationStatus.ACCEPTED }));
+      await expect(service.accept('raw', 'password-123', '1234', 'Cashier Station')).rejects.toBeInstanceOf(
+        InvitationAlreadyAcceptedException,
+      );
+      expect(events.emitInvitationAccepted).not.toHaveBeenCalled();
     });
   });
 

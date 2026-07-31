@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Ip, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Ip, Param, ParseUUIDPipe, Post, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { PermissionKey } from '@smarttable/shared-types';
 import type {
@@ -125,5 +126,36 @@ export class OrdersController {
   @Get('public/orders/:id/status')
   getPublicOrderStatus(@Param('id', ParseUUIDPipe) id: string): Promise<PublicOrderStatusDto> {
     return this.ordersService.getPublicOrderStatus(id);
+  }
+
+  /** Customer SSE stream (Contract §5, rulings D7/D8): named events
+   * `status_changed` (initial snapshot first, then each transition) and
+   * `menu_updated` (availability/profile changes — a refetch cue). Read-only,
+   * no client→server messages; unauthenticated like its sibling status read
+   * (Security §1); 60/min public read class (Security §5 names SSE
+   * reconnects in this class's rationale). Payloads are plain JSON — the
+   * REST envelope convention (§1) does not apply to event streams (§5).
+   *
+   * Written manually rather than via the framework's @Sse adapter: the
+   * service resolves the 404 check BEFORE headers are written, and the @Sse
+   * pipeline swallows that pre-stream rejection into a 200 — an unknown
+   * order must fail exactly like its sibling status read (Q8). */
+  @Public()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Get('public/orders/:id/stream')
+  async streamPublicOrder(@Param('id', ParseUUIDPipe) id: string, @Res() response: Response): Promise<void> {
+    const messages = await this.ordersService.streamPublicOrderEvents(id);
+    response
+      .status(200)
+      .set({
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      })
+      .flushHeaders();
+    const subscription = messages.subscribe((message) => {
+      response.write(`event: ${message.event}\ndata: ${JSON.stringify(message.data)}\n\n`);
+    });
+    response.on('close', () => subscription.unsubscribe());
   }
 }
