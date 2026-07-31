@@ -65,4 +65,9 @@ export enum PermissionKey {
   /** View a shift — PRD §11: Cashier sees "Own shift only" (scoping enforced
    * in the service); Owner/Manager unrestricted. */
   SHIFTS_VIEW = 'shifts.view',
+
+  /** View the BI analytics module (GET /analytics/*) — Step 3.7 ruling B1:
+   * Owner, Manager. The Cashier's "own shift only" matrix cell is served by
+   * the shifts surface (3.4 D6), not by this module. */
+  ANALYTICS_VIEW = 'analytics.view',
 }

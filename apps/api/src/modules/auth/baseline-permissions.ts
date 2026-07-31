@@ -66,4 +66,9 @@ export const BASELINE_PERMISSIONS: Readonly<Record<PermissionKey, readonly Emplo
   // PRD §11 "Own shift only" for the Cashier is a service-layer scoping
   // refinement (D6), not expressible in this static row.
   [PermissionKey.SHIFTS_VIEW]: [EmployeeRole.OWNER, EmployeeRole.MANAGER, EmployeeRole.CASHIER],
+
+  // Step 3.7 — analytics slice. Ruling B1: Owner + Manager only (the BI
+  // Dashboard is the Owner surface, PRD §7 item 29; the Cashier's own-shift
+  // visibility already shipped via SHIFTS_VIEW in 3.4).
+  [PermissionKey.ANALYTICS_VIEW]: [EmployeeRole.OWNER, EmployeeRole.MANAGER],
 };

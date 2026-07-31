@@ -18,6 +18,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { RealtimeModule } from './common/realtime/realtime.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 /**
  * Foundation composition for Phase 3. Domain modules attach here one at a
@@ -39,6 +40,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
  * Step 3.6 online: notifications (FR33) — event-driven creation as an
  * isolated bus side-effect (B5(a)), the two frozen REST routes, and
  * `notification.created` delivery through the existing bridge.
+ * Step 3.7 online: analytics (FR41–FR43) — the read-only BI query layer
+ * with the frozen live/rollup branching hidden in the service.
  */
 @Module({
   imports: [
@@ -59,6 +62,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     BillingModule,
     RealtimeModule,
     NotificationsModule,
+    AnalyticsModule,
     IdempotencyModule,
     HealthModule,
   ],
