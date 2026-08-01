@@ -19,6 +19,7 @@ import { BillingModule } from './modules/billing/billing.module';
 import { RealtimeModule } from './common/realtime/realtime.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { BackupModule } from './modules/backup/backup.module';
 
 /**
  * Foundation composition for Phase 3. Domain modules attach here one at a
@@ -45,6 +46,11 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
  * Step 3.8 online: the audit query surface (FR38 review capability) —
  * GET /audit-log with the four frozen filters and cursor pagination,
  * Owner/Manager only (B1).
+ * Step 3.9 online: backup (FR13) — the verified-snapshot engine (VACUUM
+ * INTO → integrity_check → history, trigger-agnostic per B6(a)), manual
+ * create with optional passphrase encryption (B4(a)), history, and the
+ * Owner's backup-failed notification (B5(a)). Restore, scheduling and
+ * retention are the Host/Electron phase (B1(a)).
  */
 @Module({
   imports: [
@@ -66,6 +72,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     RealtimeModule,
     NotificationsModule,
     AnalyticsModule,
+    BackupModule,
     IdempotencyModule,
     HealthModule,
   ],

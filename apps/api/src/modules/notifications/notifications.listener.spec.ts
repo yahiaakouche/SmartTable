@@ -5,7 +5,8 @@ import { OrderStatus } from '@smarttable/shared-types';
 
 /**
  * Unit tests for the B5(a) seam (Engineering Standards §10):
- *  - subscribes to exactly the three live trigger events (B2),
+ *  - subscribes to exactly the four live trigger events (3.6's three, plus
+ *    Step 3.9's backup.failed per ruling B5(a)),
  *  - forwards each event to the matching service method,
  *  - FAILURE ISOLATION: a failing handler is caught and logged, never
  *    propagated back into the bus emitter's call stack,
@@ -35,14 +36,15 @@ describe('NotificationsListener', () => {
       notifyOrderCreated: jest.fn().mockResolvedValue(undefined),
       notifyOrderStatusChanged: jest.fn().mockResolvedValue(undefined),
       notifyInvitationAccepted: jest.fn().mockResolvedValue(undefined),
+      notifyBackupFailed: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<NotificationsService>;
     listener = new NotificationsListener(events, service);
   });
 
-  it('subscribes to exactly the three live trigger events on init (B2)', () => {
+  it('subscribes to exactly the four live trigger events on init (B2 + Step 3.9 B5(a))', () => {
     listener.onModuleInit();
     expect([...registered.keys()].sort()).toEqual(
-      [DOMAIN_EVENT.INVITATION_ACCEPTED, DOMAIN_EVENT.ORDER_CREATED, DOMAIN_EVENT.ORDER_STATUS_CHANGED].sort(),
+      [DOMAIN_EVENT.INVITATION_ACCEPTED, DOMAIN_EVENT.ORDER_CREATED, DOMAIN_EVENT.ORDER_STATUS_CHANGED, DOMAIN_EVENT.BACKUP_FAILED].sort(),
     );
   });
 
@@ -51,11 +53,13 @@ describe('NotificationsListener', () => {
     registered.get(DOMAIN_EVENT.ORDER_CREATED)!({ id: 'o1', tableId: 't1' });
     registered.get(DOMAIN_EVENT.ORDER_STATUS_CHANGED)!({ orderId: 'o1', fromStatus: 'preparing', toStatus: OrderStatus.READY });
     registered.get(DOMAIN_EVENT.INVITATION_ACCEPTED)!({ invitationId: 'i1', employeeId: 'e1' });
+    registered.get(DOMAIN_EVENT.BACKUP_FAILED)!({ backupHistoryId: 'h1' });
     await new Promise((r) => setImmediate(r));
 
     expect(service.notifyOrderCreated).toHaveBeenCalledWith({ id: 'o1', tableId: 't1' });
     expect(service.notifyOrderStatusChanged).toHaveBeenCalledWith({ orderId: 'o1', fromStatus: 'preparing', toStatus: OrderStatus.READY });
     expect(service.notifyInvitationAccepted).toHaveBeenCalledWith({ invitationId: 'i1', employeeId: 'e1' });
+    expect(service.notifyBackupFailed).toHaveBeenCalledWith({ backupHistoryId: 'h1' });
   });
 
   it('isolation: an async handler failure is swallowed — the bus emit never throws', async () => {

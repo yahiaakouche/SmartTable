@@ -26,6 +26,11 @@ export const NOTIFICATION_TYPE = {
   INVITATION_ACCEPTED: 'invitation_accepted',
   /** Vocabulary only — NO emitter until a request-bill flow exists (B2). */
   BILL_REQUESTED: 'bill_requested',
+  /** Step 3.9 ruling B5(a): additive extension — raised to the Owner when a
+   * backup's verification sequence fails (Backup & Resilience §2 step 4).
+   * Delivered through the existing notification channel; no new real-time
+   * event (D9). */
+  BACKUP_FAILED: 'backup_failed',
 } as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPE)[keyof typeof NOTIFICATION_TYPE];
@@ -41,7 +46,15 @@ export interface InvitationAcceptedNotificationPayload {
   employeeId: string;
 }
 
-export type NotificationPayload = OrderNotificationPayload | InvitationAcceptedNotificationPayload;
+/** D2 — a minimal reference only: the backup_history row id. The failure
+ * REASON stays in the structured app-log (Step 3.9 D3 — the frozen history
+ * table has no reason column, and a reason string could carry filesystem
+ * paths best kept off the notification channel). */
+export interface BackupFailedNotificationPayload {
+  backupHistoryId: string;
+}
+
+export type NotificationPayload = OrderNotificationPayload | InvitationAcceptedNotificationPayload | BackupFailedNotificationPayload;
 
 /** GET /notifications item AND the `notification.created` event body (D9):
  * one shape serves both — the bridge routes on the two targeting fields and

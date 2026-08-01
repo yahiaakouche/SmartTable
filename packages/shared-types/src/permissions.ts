@@ -76,4 +76,9 @@ export enum PermissionKey {
    * security events and old/new values (Security §9), so it stays with the
    * audience already trusted with device revocation and staff management. */
   AUDIT_VIEW = 'audit.view',
+
+  /** Create manual backups and view backup history (POST /backup/create,
+   * GET /backup/history) — Step 3.9 ruling B3: Owner, Manager (FR13 verbatim:
+   * "initiated by the Owner or Manager"). */
+  BACKUP_MANAGE = 'backup.manage',
 }

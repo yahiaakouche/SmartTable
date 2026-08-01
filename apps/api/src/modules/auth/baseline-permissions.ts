@@ -75,4 +75,8 @@ export const BASELINE_PERMISSIONS: Readonly<Record<PermissionKey, readonly Emplo
   // Step 3.8 — audit query surface. Ruling B1: Owner + Manager only (API
   // Contract §3 freezes "Owner/Manager only" for GET /audit-log).
   [PermissionKey.AUDIT_VIEW]: [EmployeeRole.OWNER, EmployeeRole.MANAGER],
+
+  // Step 3.9 — backup slice. Ruling B3: Owner + Manager (FR13: manual backup
+  // is "initiated by the Owner or Manager").
+  [PermissionKey.BACKUP_MANAGE]: [EmployeeRole.OWNER, EmployeeRole.MANAGER],
 };

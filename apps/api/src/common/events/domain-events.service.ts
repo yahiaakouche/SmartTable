@@ -22,6 +22,13 @@ export const DOMAIN_EVENT = {
   INVITATION_ACCEPTED: 'invitation.accepted',
   NOTIFICATION_CREATED: 'notification.created',
   RESTAURANT_PROFILE_CHANGED: 'restaurant_profile.changed',
+  /** INTERNAL side-effect signal only (Step 3.9, ruling B5(a)) — NOT a §4
+   * real-time event: the staff bridge's router has no case for it, so it
+   * never leaves the process. It exists so the backup module can ask the
+   * notifications module to alert the Owner without an HTTP call between
+   * modules (Contract §1); delivery to clients happens exclusively through
+   * `notification.created` (D9). */
+  BACKUP_FAILED: 'backup.failed',
 } as const;
 
 export interface ProductAvailabilityChangedPayload {
@@ -66,6 +73,13 @@ export interface NotificationCreatedPayload {
  * profile DTO, owned by the config step; typed as a passthrough record so
  * the bridge never depends on a module that does not exist yet (D8). */
 export type RestaurantProfileChangedPayload = Record<string, unknown>;
+
+/** Internal backup.failed signal (Step 3.9) — a minimal reference: the
+ * backup_history row id. The failure reason stays in the structured app-log
+ * (D3), off the notification channel. */
+export interface BackupFailedPayload {
+  backupHistoryId: string;
+}
 
 /**
  * The frozen internal event bus (Technology Stack: "Node EventEmitter, no
@@ -123,6 +137,14 @@ export class DomainEventsService {
   /** No caller until the config step — same forward-seam rationale (D8). */
   emitRestaurantProfileChanged(payload: RestaurantProfileChangedPayload): void {
     this.emitter.emit(DOMAIN_EVENT.RESTAURANT_PROFILE_CHANGED, payload);
+  }
+
+  /** Emitted by the backup engine AFTER the failed verification has been
+   * recorded in backup_history (emit-after-commit, Contract §4 rule applied
+   * one level down — the notification must never reference a row that does
+   * not exist). */
+  emitBackupFailed(payload: BackupFailedPayload): void {
+    this.emitter.emit(DOMAIN_EVENT.BACKUP_FAILED, payload);
   }
 
   /** Subscription path for the real-time bridge, for customer SSE streams,

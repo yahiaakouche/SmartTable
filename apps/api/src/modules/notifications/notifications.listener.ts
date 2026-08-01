@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import {
+  BackupFailedPayload,
   DOMAIN_EVENT,
   DomainEventsService,
   InvitationAcceptedPayload,
@@ -46,6 +47,12 @@ export class NotificationsListener implements OnModuleInit, OnModuleDestroy {
           () => this.notificationsService.notifyInvitationAccepted(payload as InvitationAcceptedPayload),
           DOMAIN_EVENT.INVITATION_ACCEPTED,
         );
+      }),
+      // Step 3.9 (B5(a)) — the backup engine's failure signal becomes an
+      // Owner notification here; the backup module itself never imports
+      // notifications (Contract §1: side-effects via the bus, never HTTP).
+      this.events.on(DOMAIN_EVENT.BACKUP_FAILED, (payload) => {
+        void this.isolated(() => this.notificationsService.notifyBackupFailed(payload as BackupFailedPayload), DOMAIN_EVENT.BACKUP_FAILED);
       }),
     );
   }

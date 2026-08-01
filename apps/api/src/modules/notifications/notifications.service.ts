@@ -9,6 +9,7 @@ import {
   OrderStatus,
 } from '@smarttable/shared-types';
 import {
+  BackupFailedPayload,
   DomainEventsService,
   InvitationAcceptedPayload,
   OrderStatusChangedPayload,
@@ -102,6 +103,18 @@ export class NotificationsService {
         payload: { invitationId: payload.invitationId, employeeId: payload.employeeId },
       });
     }
+  }
+
+  /** backup.failed → role:owner ONLY (Step 3.9 ruling B5(a)) — Backup &
+   * Resilience §2 step 4: a failed backup verification must reach the Owner
+   * immediately. Payload is the minimal history-row reference (D2/D3). */
+  async notifyBackupFailed(payload: BackupFailedPayload): Promise<void> {
+    await this.createAndEmit({
+      recipientRole: EmployeeRole.OWNER,
+      recipientEmployeeId: null,
+      type: NOTIFICATION_TYPE.BACKUP_FAILED,
+      payload: { backupHistoryId: payload.backupHistoryId },
+    });
   }
 
   /** Persist first, emit second — the emitted body IS the stored row's DTO
