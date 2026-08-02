@@ -4,6 +4,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { AppLogger } from './common/logging/app-logger.service';
 
 /**
  * Bootstrap notes tying back to frozen decisions:
@@ -39,7 +40,9 @@ async function bootstrap() {
     }),
   );
 
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  // Step 3.13 — the filter additionally writes unexpected errors to the
+  // structured Application Log when the logger is in the module graph.
+  app.useGlobalFilters(new GlobalExceptionFilter(app.get(AppLogger, { strict: false })));
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('SmartTable API')

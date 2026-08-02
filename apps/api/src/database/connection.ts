@@ -1,10 +1,19 @@
 import Database from 'better-sqlite3';
 import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
+import { instrumentSlowQueries } from '../common/logging/slow-query';
 
 export type DbClient = BetterSQLite3Database<typeof schema>;
 
 export class DatabaseIntegrityError extends Error {}
+
+/** Optional Monitoring §7 slow-query reporting hook (Step 3.13) — wired by
+ * DatabaseModule in production; tests open databases without it unless the
+ * slow-query behavior itself is under test. */
+export interface OpenDatabaseOptions {
+  onSlowQuery?: (sqlText: string, durationMs: number) => void;
+  slowQueryThresholdMs?: number;
+}
 
 /**
  * Opens the SQLite database and applies every cross-cutting rule frozen in
@@ -19,7 +28,7 @@ export class DatabaseIntegrityError extends Error {}
  *    the Backup & Resilience Architecture §5 boot sequence. The slower, full
  *    `integrity_check` runs on a periodic schedule elsewhere, not here.
  */
-export function openDatabase(filePath: string): DbClient {
+export function openDatabase(filePath: string, options?: OpenDatabaseOptions): DbClient {
   const sqlite = new Database(filePath);
 
   sqlite.pragma('journal_mode = WAL');
@@ -34,6 +43,10 @@ export function openDatabase(filePath: string): DbClient {
     throw new DatabaseIntegrityError(
       `Database failed quick_check: ${quickCheckResult}. Startup halted — see Backup & Resilience Architecture §5.`,
     );
+  }
+
+  if (options?.onSlowQuery) {
+    instrumentSlowQueries(sqlite, options.onSlowQuery, options.slowQueryThresholdMs);
   }
 
   return drizzle(sqlite, { schema });

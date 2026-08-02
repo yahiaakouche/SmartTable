@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min, validateSync } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, Min, validateSync } from 'class-validator';
 
 /**
  * Typed configuration schema — Engineering Standards §9.
@@ -69,6 +69,30 @@ export class AppConfig {
   @IsInt()
   @Min(1)
   UPLOAD_MAX_FILE_SIZE_BYTES: number = 5 * 1024 * 1024;
+
+  /** Monitoring Architecture §2 — minimum application-log level; debug is
+   * off by default in production. Owner-configurable via the Host's
+   * Diagnostics UI in the Host phase. */
+  @IsOptional()
+  @IsIn(['debug', 'info', 'warn', 'error'])
+  LOG_LEVEL: string = 'info';
+
+  /** Monitoring Architecture §3 — application-log retention in days
+   * (daily files are the rotation; deletion is the disk-growth
+   * mitigation). Applies ONLY to Application Logs, never to the Audit
+   * Log or Order Status Events (NFR15/NFR16). */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  LOG_RETENTION_DAYS: number = 14;
+
+  /** Monitoring Architecture §7 — slow-query warn threshold in
+   * milliseconds (the document's example default, generous for SQLite at
+   * this data volume). */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  SLOW_QUERY_THRESHOLD_MS: number = 200;
 }
 
 /**

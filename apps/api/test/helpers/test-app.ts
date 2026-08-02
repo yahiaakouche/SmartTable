@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { TestingModuleBuilder } from '@nestjs/testing';
 import * as argon2 from 'argon2';
 import { GlobalExceptionFilter } from '../../src/common/filters/global-exception.filter';
+import { AppLogger } from '../../src/common/logging/app-logger.service';
 import { ResponseEnvelopeInterceptor } from '../../src/common/interceptors/response-envelope.interceptor';
 import { IdempotencyInterceptor } from '../../src/common/idempotency/idempotency.interceptor';
 import { IDEMPOTENCY_REPOSITORY, IdempotencyRepository } from '../../src/common/idempotency/idempotency.repository';
@@ -27,7 +28,16 @@ export async function createTestApp(
     app.setGlobalPrefix(options.globalPrefix); // main.ts: 'api/v1' — used by E2E tests
   }
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  // Step 3.13 — same wiring as main.ts: the filter writes unexpected
+  // errors to the Application Log when the suite's module graph includes
+  // LoggingModule; undefined otherwise (console-only, as before).
+  let appLogger: AppLogger | undefined;
+  try {
+    appLogger = moduleRef.get<AppLogger>(AppLogger, { strict: false });
+  } catch {
+    appLogger = undefined;
+  }
+  app.useGlobalFilters(new GlobalExceptionFilter(appLogger));
   // Suites importing the full AppModule (E2E) already have BOTH interceptors
   // registered via AppModule's APP_INTERCEPTOR providers — adding a manual
   // pair on top would run the idempotency interceptor TWICE per request

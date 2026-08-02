@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { DomainException, IdempotencyKeyReusedException } from '../exceptions/domain.exception';
+import { AppLogger } from '../logging/app-logger.service';
 
 /**
  * Every error response in the system passes through here — the single place
@@ -14,6 +15,14 @@ import { DomainException, IdempotencyKeyReusedException } from '../exceptions/do
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger('ExceptionFilter');
+
+  /** Step 3.13 — optional because this filter is also constructed manually
+   * in test/bootstrap contexts: when the application logger is present,
+   * unexpected errors additionally land in the structured Application Log
+   * (Monitoring §2: error level ALWAYS includes the stack trace). Expected
+   * business errors stay out of the file — the request interceptor already
+   * logs their request line with the 4xx status. */
+  constructor(private readonly appLogger?: AppLogger) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -57,6 +66,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     // Truly unexpected — always logged with stack trace, never silently swallowed
     // (Engineering Standards §7 — "no silent catches").
     this.logger.error('Unhandled exception', exception instanceof Error ? exception.stack : String(exception));
+    this.appLogger
+      ?.child('ExceptionFilter')
+      .error('Unhandled exception', { stack: exception instanceof Error ? exception.stack : String(exception) });
     response.status(500).json({
       error: {
         code: 'INTERNAL_ERROR',

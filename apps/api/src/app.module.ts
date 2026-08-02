@@ -5,6 +5,7 @@ import { ResponseEnvelopeInterceptor } from './common/interceptors/response-enve
 import { IdempotencyInterceptor } from './common/idempotency/idempotency.interceptor';
 import { IdempotencyModule } from './common/idempotency/idempotency.module';
 import { EventsModule } from './common/events/events.module';
+import { LoggingModule } from './common/logging/logging.module';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './modules/health/health.module';
@@ -72,12 +73,24 @@ import { SetupWizardModule } from './modules/setup-wizard/setup-wizard.module';
  * CPU/memory/disk (B1(a) — the module's existing @Public exposure class).
  * /diagnostics/connected-devices and the printer/update checks stay with
  * their owning phases (B2(a)/B4(a)).
+ * Step 3.13 online: unified application logging (Monitoring §2/§3/§7,
+ * ES §8) — structured JSON-lines to LOG_DIRECTORY with the frozen
+ * mandatory fields, per-request correlation IDs (B2(a): HTTP only) echoed
+ * in X-Correlation-ID (B3(a)), duration lines for every request,
+ * slow-query flagging at the connection (B4(a): SQL text only), daily
+ * rotation with the 14-day retention sweep (B1(a)), and unexpected-error
+ * lines with stack traces through the exception filter. Application Logs
+ * stay strictly separate from the Audit Log (Monitoring §1).
  */
 @Module({
   imports: [
     ConfigModule,
     DatabaseModule,
     EventsModule,
+    // Unified Application Logging (Monitoring §2/§3/§7) — correlation-ID
+    // middleware on every route, per-request duration lines, and the
+    // startup retention sweep. Step 3.13.
+    LoggingModule,
     // Default throttling profile — Security Architecture §5 defines the
     // per-route-class overrides that individual controllers apply on top
     // of this global default as each of those controllers is built.
