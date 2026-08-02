@@ -21,6 +21,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { RestaurantConfigModule } from './modules/config/restaurant-config.module';
+import { SetupWizardModule } from './modules/setup-wizard/setup-wizard.module';
 
 /**
  * Foundation composition for Phase 3. Domain modules attach here one at a
@@ -58,6 +59,12 @@ import { RestaurantConfigModule } from './modules/config/restaurant-config.modul
  * `restaurant_profile.changed` broadcast through the pre-wired bridge
  * (D7), and branding on the customer menu entry (B2(a)). Profile creation
  * stays with the future Setup Wizard (B3(a)).
+ * Step 3.11 online: setup-wizard (FR15/FR16, PRD §1.2) — the one-time
+ * public bootstrap: GET /setup/status and the atomic POST /setup/complete
+ * (profile + "Main Hall" + Table 1..N with QR tokens + first Owner, one
+ * transaction per B5(a)), guarded one-shot by SETUP_ALREADY_COMPLETED
+ * (B1(a)). No tokens in the response — password-login issues device
+ * trust. Only the Host-facing diagnostics module remains unserved (R1).
  */
 @Module({
   imports: [
@@ -81,6 +88,7 @@ import { RestaurantConfigModule } from './modules/config/restaurant-config.modul
     AnalyticsModule,
     BackupModule,
     RestaurantConfigModule,
+    SetupWizardModule,
     IdempotencyModule,
     HealthModule,
   ],

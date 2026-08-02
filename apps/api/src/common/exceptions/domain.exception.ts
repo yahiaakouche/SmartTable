@@ -261,3 +261,15 @@ export class ShiftAlreadyClosedException extends DomainException {
     super(`Shift ${shiftId} is already closed.`, { shiftId });
   }
 }
+
+/** Step 3.11 ruling B1(a)/D4 — the one-shot guard behind the public
+ * bootstrap endpoint: once the Setup Wizard transaction has committed,
+ * every further completion attempt is a conflict, never a second setup. */
+export class SetupAlreadyCompletedException extends DomainException {
+  readonly code = 'SETUP_ALREADY_COMPLETED';
+  readonly httpStatus = 409;
+
+  constructor() {
+    super('Setup has already been completed for this installation.');
+  }
+}
