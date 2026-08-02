@@ -15,6 +15,9 @@ process.env.DATABASE_FILE_PATH = path.join(scratch, 'test.db');
 process.env.HTTP_PORT = '13080';
 process.env.HTTPS_PORT = '13443';
 process.env.JWT_SIGNING_KEY = 'test-only-signing-key-not-for-production';
+// Step 3.14 (D7) — required by the config schema (strict MAJOR.MINOR.PATCH);
+// specs send their own fresh header values, never a real product version.
+process.env.APP_VERSION = '0.0.0';
 process.env.LOG_DIRECTORY = path.join(scratch, 'logs');
 process.env.BACKUP_DIRECTORY = path.join(scratch, 'backups');
 process.env.UPLOAD_DIRECTORY = path.join(scratch, 'uploads');

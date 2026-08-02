@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min, validateSync } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Matches, Max, Min, validateSync } from 'class-validator';
 
 /**
  * Typed configuration schema — Engineering Standards §9.
@@ -62,6 +62,15 @@ export class AppConfig {
   @IsOptional()
   @IsString()
   UPLOAD_DIRECTORY: string = 'uploads';
+
+  /** The running installation's release version (Installer & Auto-Update
+   * Architecture §4 — Semantic Versioning), written by the Electron Host at
+   * launch like every other bootstrap value. Compared verbatim against the
+   * X-Client-Version header (API Contract Design §1, Step 3.14 ruling
+   * B1(a)/B2(a)) — required so the guard can never be silently off. */
+  @IsString()
+  @Matches(/^\d+\.\d+\.\d+$/, { message: 'APP_VERSION must be a SemVer string (MAJOR.MINOR.PATCH)' })
+  APP_VERSION!: string;
 
   /** Security Architecture §6 — per-file upload ceiling (default 5 MB).
    * Upload size is also an input to the Host's disk-space monitoring. */

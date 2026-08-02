@@ -6,6 +6,7 @@ import { IdempotencyInterceptor } from './common/idempotency/idempotency.interce
 import { IdempotencyModule } from './common/idempotency/idempotency.module';
 import { EventsModule } from './common/events/events.module';
 import { LoggingModule } from './common/logging/logging.module';
+import { ClientVersionGuard } from './common/client-version/client-version.guard';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './modules/health/health.module';
@@ -81,6 +82,13 @@ import { SetupWizardModule } from './modules/setup-wizard/setup-wizard.module';
  * rotation with the 14-day retention sweep (B1(a)), and unexpected-error
  * lines with stack traces through the exception filter. Application Logs
  * stay strictly separate from the Audit Log (Monitoring §1).
+ * Step 3.14 online: client/server version guard (API Contract §1) — a
+ * global APP_GUARD, first in the chain, rejects any request whose
+ * X-Client-Version differs from the running APP_VERSION with
+ * 409 CLIENT_VERSION_STALE ("prompting a refresh" for cached customer QR
+ * pages). Headerless requests pass unchecked (B3(a)); WebSocket is out of
+ * scope by ruling. Its 409 lines ride the Step 3.13 middleware finish
+ * fallback — no new logging, no audit duplication (Monitoring §1).
  */
 @Module({
   imports: [
@@ -113,6 +121,12 @@ import { SetupWizardModule } from './modules/setup-wizard/setup-wizard.module';
     HealthModule,
   ],
   providers: [
+    // Client/server version check (API Contract §1) — FIRST in the guard
+    // chain (Step 3.14 ruling B5(a)): the cheapest possible rejection, so a
+    // stale client (typically a cached customer QR page) is told to refresh
+    // before throttling, auth, or any DB work runs. Headerless requests
+    // pass unchecked (B3(a)).
+    { provide: APP_GUARD, useClass: ClientVersionGuard },
     // Global rate limiting (Security §5) — route classes override via
     // @Throttle; everything else gets the generous default above.
     { provide: APP_GUARD, useClass: ThrottlerGuard },

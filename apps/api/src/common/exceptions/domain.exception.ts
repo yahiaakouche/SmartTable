@@ -273,3 +273,15 @@ export class SetupAlreadyCompletedException extends DomainException {
     super('Setup has already been completed for this installation.');
   }
 }
+
+/** API Contract Design §1/§2 — the client sent an X-Client-Version that does
+ * not match the running server version: the caller (typically a cached
+ * customer QR page) must reload before continuing. Step 3.14. */
+export class ClientVersionStaleException extends DomainException {
+  readonly code = 'CLIENT_VERSION_STALE';
+  readonly httpStatus = 409;
+
+  constructor() {
+    super('This page was loaded from an older version of SmartTable. Please refresh to continue.');
+  }
+}
