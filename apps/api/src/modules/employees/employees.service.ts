@@ -4,6 +4,7 @@ import type {
   CreateEmployeeResponse,
   DeviceDto,
   EmployeeDto,
+  EmployeePresenceResponse,
   EmployeeRole,
 } from '@smarttable/shared-types';
 import { EMPLOYEES_REPOSITORY, EmployeesRepository } from './employees.repository';
@@ -11,6 +12,7 @@ import { InvitationsService } from '../invitations/invitations.service';
 import { AuthService } from '../auth/auth.service';
 import { TokensService } from '../auth/tokens.service';
 import { AuditService } from '../audit/audit.service';
+import { PresenceRegistry } from '../../common/realtime/presence-registry';
 import { EntityNotFoundException } from '../../common/exceptions/domain.exception';
 
 type EmployeeRow = Awaited<ReturnType<EmployeesRepository['findById']>> & {};
@@ -29,11 +31,23 @@ export class EmployeesService {
     private readonly authService: AuthService,
     private readonly tokens: TokensService,
     private readonly audit: AuditService,
+    private readonly presence: PresenceRegistry,
   ) {}
 
+  /** FR28 / API Contract §3 — current online/offline for one employee, read
+   * from the in-memory gateway state (PresenceRegistry, ADR-011), NEVER the
+   * database (Step 3.15 ruling B3(a)): an unknown employee id is simply
+   * offline — the registry is the single source of truth and no existence
+   * check is performed. Read-only: no audit entry (Monitoring §1), no
+   * events. */
+  getPresence(employeeId: string): EmployeePresenceResponse {
+    return { employeeId, online: this.presence.isOnline(employeeId) };
+  }
+
   /** FR28 roster — every employee with their latest invitation status and
-   * last login timestamp. Presence (online/offline) arrives with the
-   * presence/real-time step and is deliberately not part of this DTO. */
+   * last login timestamp. Presence is deliberately not part of this DTO
+   * (Step 3.15 ruling B5(a)): it is served by GET /employees/:id/presence
+   * from the in-memory registry, and clients compose the two. */
   async list(page: number, pageSize: number): Promise<{ employees: EmployeeDto[]; total: number }> {
     const { rows, total } = await this.employeesRepository.list(page, pageSize);
     const statusByEmployee = await this.invitationsService.getLatestStatusByEmployeeIds(

@@ -10,6 +10,7 @@ import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { InvitationsModule } from '../invitations/invitations.module';
 import { EmployeesModule } from './employees.module';
+import { PresenceRegistry } from '../../common/realtime/presence-registry';
 import { openIsolatedTestDb } from '../../../test/helpers/test-db';
 import { createTestApp, getDb, seedEmployee } from '../../../test/helpers/test-app';
 
@@ -221,5 +222,97 @@ describe('EmployeesModule (integration)', () => {
       .send({ role: 'manager' })
       .expect(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+
+  /** Step 3.15 — GET /employees/:id/presence (API Contract §3, FR28).
+   * Reads the in-memory PresenceRegistry only — never the DB (B3(a)). */
+  describe('GET /employees/:id/presence (Step 3.15)', () => {
+    const pinLogin = async (name: string, role: string, pin: string): Promise<{ employeeId: string; token: string }> => {
+      const employeeId = await seedEmployee(getDb(app), { name, role, pin });
+      const { randomBytes } = await import('crypto');
+      const { TokensService } = await import('../auth/tokens.service');
+      const rawToken = randomBytes(48).toString('base64url');
+      await getDb(app)
+        .insert(refreshTokens)
+        .values({
+          employeeId,
+          deviceLabel: 'Presence Test Terminal',
+          tokenHash: TokensService.hashToken(rawToken),
+          lastUsedAt: Date.now(),
+          expiresAt: Date.now() + 86_400_000,
+        });
+      const login = await authed().post('/auth/pin-login').send({ deviceRefreshToken: rawToken, employeeId, pin });
+      return { employeeId, token: login.body.data.accessToken };
+    };
+
+    it('an employee with no connected sockets is offline — exact B4(a) shape', async () => {
+      const { employeeId } = await pinLogin('Sofia Presence', 'waiter', '2222');
+
+      const res = await authed()
+        .get(`/employees/${employeeId}/presence`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body).toEqual({ data: { employeeId, online: false } });
+    });
+
+    it('B3(a) — an unknown employee id is simply offline; no DB existence check, no 404', async () => {
+      const unknownId = '00000000-0000-7000-8000-000000000099';
+      const res = await authed()
+        .get(`/employees/${unknownId}/presence`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+      expect(res.body).toEqual({ data: { employeeId: unknownId, online: false } });
+    });
+
+    it('the registry is the single source of truth: a registered socket flips the answer, its removal flips it back', async () => {
+      const { employeeId } = await pinLogin('Iman Presence', 'cashier', '3333');
+      const registry = app.get(PresenceRegistry);
+
+      registry.register(employeeId, 'socket-1');
+      const online = await authed()
+        .get(`/employees/${employeeId}/presence`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+      expect(online.body.data).toEqual({ employeeId, online: true });
+
+      registry.unregister('socket-1');
+      const offline = await authed()
+        .get(`/employees/${employeeId}/presence`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+      expect(offline.body.data).toEqual({ employeeId, online: false });
+    });
+
+    it('B1(a) — roster visibility class: Manager may read presence, Waiter may not (PRD §11)', async () => {
+      const { employeeId } = await pinLogin('Sofia Presence', 'waiter', '2222');
+      const manager = await pinLogin('Amina Presence', 'manager', '4444');
+      const waiter = await pinLogin('Yanis Presence', 'waiter', '5555');
+
+      await authed()
+        .get(`/employees/${employeeId}/presence`)
+        .set('Authorization', `Bearer ${manager.token}`)
+        .expect(200);
+
+      const denied = await authed()
+        .get(`/employees/${employeeId}/presence`)
+        .set('Authorization', `Bearer ${waiter.token}`)
+        .expect(403);
+      expect(denied.body.error.code).toBe('INSUFFICIENT_PERMISSION');
+    });
+
+    it('requires authentication', async () => {
+      const { employeeId } = await pinLogin('Sofia Presence', 'waiter', '2222');
+      await authed().get(`/employees/${employeeId}/presence`).expect(401);
+    });
+
+    it('B5(a) — the roster DTO is unchanged: no presence field leaked into GET /employees', async () => {
+      await pinLogin('Sofia Presence', 'waiter', '2222');
+      const res = await authed().get('/employees').set('Authorization', `Bearer ${ownerToken}`).expect(200);
+      for (const employee of res.body.data) {
+        expect(employee).not.toHaveProperty('online');
+        expect(employee).not.toHaveProperty('presence');
+      }
+    });
   });
 });

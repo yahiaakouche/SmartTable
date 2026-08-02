@@ -4,6 +4,7 @@ import type {
   CreateEmployeeResponse,
   DeviceDto,
   EmployeeDto,
+  EmployeePresenceResponse,
 } from '@smarttable/shared-types';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -61,6 +62,16 @@ export class EmployeesController {
   ): Promise<{ success: true }> {
     await this.employeesService.resetPin(id, dto.newPin, actor.id);
     return { success: true };
+  }
+
+  /** FR28 / API Contract §3 — current online/offline, read from the
+   * in-memory gateway state, never the DB (Step 3.15, B1(a)/B3(a)).
+   * Roster permission (Owner+Manager) — same visibility class as the
+   * roster itself. */
+  @RequirePermission(PermissionKey.STAFF_VIEW_ROSTER)
+  @Get('employees/:id/presence')
+  getPresence(@Param('id', ParseUUIDPipe) id: string): EmployeePresenceResponse {
+    return this.employeesService.getPresence(id);
   }
 
   /** Active Devices screen (Security Architecture §1). */

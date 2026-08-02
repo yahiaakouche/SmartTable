@@ -137,3 +137,16 @@ export type StatusChangedStreamPayload = PublicOrderStatusDto;
  * `restaurant_profile.changed` once the config step exists. The customer
  * client treats it as a refetch cue for GET /public/menu/:qrToken. */
 export type MenuUpdatedStreamPayload = ProductAvailabilityChangedEventPayload;
+
+/** GET /employees/:id/presence response — the REST presence surface whose
+ * reservation is noted above (Step 3.15). API Contract Design §3: "Current
+ * online/offline (reads in-memory gateway state, not DB)". Completes the
+ * FR28 roster triad (invitation status, last login, live presence) and
+ * gives the Owner Live Monitor (FR30) its initial-snapshot pull before it
+ * subscribes to `employee.presence_changed` deltas (ruling B4(a): exactly
+ * the catalog's "current online/offline" — per-device detail belongs to
+ * the deferred connected-devices Host view, not here). */
+export interface EmployeePresenceResponse {
+  employeeId: string;
+  online: boolean;
+}
