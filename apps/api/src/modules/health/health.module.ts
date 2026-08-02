@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { DiagnosticsController } from './diagnostics.controller';
 import { HealthRegistryService } from './health-registry.service';
+import { ResourcesService } from './resources.service';
 import { DatabaseHealthCheck } from './checks/database.health-check';
+import { DiskSpaceHealthCheck } from './checks/disk-space.health-check';
 
 @Module({
   controllers: [DiagnosticsController],
-  providers: [HealthRegistryService, DatabaseHealthCheck],
+  providers: [HealthRegistryService, ResourcesService, DatabaseHealthCheck, DiskSpaceHealthCheck],
   // Exported so subsystems that arrive in later steps can self-register
   // their checks (Monitoring §4 pluggable registry — first consumer: the
   // real-time bridge, Step 3.5).

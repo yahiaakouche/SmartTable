@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { HealthCheck, HealthResult, HealthStatus } from './health-check.interface';
 import { DatabaseHealthCheck } from './checks/database.health-check';
+import { DiskSpaceHealthCheck } from './checks/disk-space.health-check';
 
 export interface AggregateHealth {
   overall: HealthStatus;
@@ -24,8 +25,11 @@ export interface AggregateHealth {
 export class HealthRegistryService {
   private readonly checks: HealthCheck[];
 
-  constructor(databaseCheck: DatabaseHealthCheck) {
-    this.checks = [databaseCheck];
+  constructor(databaseCheck: DatabaseHealthCheck, diskSpaceCheck: DiskSpaceHealthCheck) {
+    // Health-module-internal checks register statically (D3); the open
+    // register() extension point below stays for OTHER subsystems — the
+    // real-time channel (3.5 D10) and the backup domain (3.12 B3(a)).
+    this.checks = [databaseCheck, diskSpaceCheck];
   }
 
   /** The pluggable extension point named above (Monitoring §4): subsystems

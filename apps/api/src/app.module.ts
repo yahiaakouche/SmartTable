@@ -65,6 +65,13 @@ import { SetupWizardModule } from './modules/setup-wizard/setup-wizard.module';
  * transaction per B5(a)), guarded one-shot by SETUP_ALREADY_COMPLETED
  * (B1(a)). No tokens in the response — password-login issues device
  * trust. Only the Host-facing diagnostics module remains unserved (R1).
+ * Step 3.12 online: the diagnostics API slice (Contract §3) — the
+ * Monitoring §4 registry gains its disk-space (module-internal) and
+ * backup-status (self-registering, the 3.5 D10 idiom) checks with frozen
+ * B3(a) thresholds, and GET /diagnostics/resources serves live
+ * CPU/memory/disk (B1(a) — the module's existing @Public exposure class).
+ * /diagnostics/connected-devices and the printer/update checks stay with
+ * their owning phases (B2(a)/B4(a)).
  */
 @Module({
   imports: [
