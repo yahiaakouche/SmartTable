@@ -81,4 +81,16 @@ export enum PermissionKey {
    * GET /backup/history) — Step 3.9 ruling B3: Owner, Manager (FR13 verbatim:
    * "initiated by the Owner or Manager"). */
   BACKUP_MANAGE = 'backup.manage',
+
+  /** View the restaurant profile (GET /config/restaurant-profile) — Step
+   * 3.10 D6: all five staff roles. Branding carries nothing sensitive and
+   * every staff screen renders it (the menu.view philosophy: viewing open,
+   * mutation gated). */
+  CONFIG_VIEW = 'config.view',
+  /** Edit the restaurant profile (PATCH /config/restaurant-profile) —
+   * Step 3.10 ruling B1(a): Owner only. The PRD role journeys assign
+   * "restaurant branding… and system-wide settings" (which include the tax
+   * rate and interface language) to the Owner alone; FR31's "Owner/Manager"
+   * phrase defines propagation, not authorization. */
+  CONFIG_MANAGE = 'config.manage',
 }

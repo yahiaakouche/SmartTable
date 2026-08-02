@@ -12,7 +12,9 @@ import { MENU_REPOSITORY, DrizzleMenuRepository } from './menu.repository';
  * tables module's public customer endpoint (`GET /public/menu/:qrToken`)
  * resolves the live menu through it — legal module consumption via exported
  * providers only (Engineering Standards §2), and acyclic: menu never imports
- * tables (ES §5).
+ * tables (ES §5). ImageStorageService is exported for the config module's
+ * logo upload (Step 3.10 D5) — the same Security §6 pipeline, reused
+ * verbatim instead of duplicated.
  */
 @Module({
   imports: [AuthModule, AuditModule],
@@ -22,6 +24,6 @@ import { MENU_REPOSITORY, DrizzleMenuRepository } from './menu.repository';
     ImageStorageService,
     { provide: MENU_REPOSITORY, useClass: DrizzleMenuRepository },
   ],
-  exports: [MenuService],
+  exports: [MenuService, ImageStorageService],
 })
 export class MenuModule {}

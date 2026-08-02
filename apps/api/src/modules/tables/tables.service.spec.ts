@@ -1,6 +1,7 @@
 import { TablesService } from './tables.service';
 import { TablesRepository } from './tables.repository';
 import { MenuService } from '../menu/menu.service';
+import { RestaurantConfigService } from '../config/restaurant-config.service';
 import { AuditService } from '../audit/audit.service';
 import { DomainEventsService } from '../../common/events/domain-events.service';
 import {
@@ -19,6 +20,7 @@ describe('TablesService', () => {
   let service: TablesService;
   let repository: jest.Mocked<TablesRepository>;
   let menuService: jest.Mocked<MenuService>;
+  let configService: jest.Mocked<RestaurantConfigService>;
   let audit: jest.Mocked<AuditService>;
   let events: jest.Mocked<DomainEventsService>;
 
@@ -54,6 +56,8 @@ describe('TablesService', () => {
       countNonTerminalOrders: jest.fn(),
     } as jest.Mocked<TablesRepository>;
     menuService = { getPublicMenu: jest.fn().mockResolvedValue([]) } as unknown as jest.Mocked<MenuService>;
+    // Step 3.10 ruling B2(a): branding on the public menu — null pre-setup.
+    configService = { findProfileOrNull: jest.fn().mockResolvedValue(null) } as unknown as jest.Mocked<RestaurantConfigService>;
     audit = { append: jest.fn() } as unknown as jest.Mocked<AuditService>;
     events = {
       emitTableStatusChanged: jest.fn(),
@@ -61,7 +65,7 @@ describe('TablesService', () => {
       on: jest.fn(),
     } as unknown as jest.Mocked<DomainEventsService>;
 
-    service = new TablesService(repository, menuService, audit, events);
+    service = new TablesService(repository, menuService, configService, audit, events);
   });
 
   it('generates QR tokens with 256 bits of CSPRNG entropy, non-sequential (FR35)', async () => {
@@ -195,5 +199,35 @@ describe('TablesService', () => {
 
     expect(result.table).toEqual({ id: 'table-1', label: 'Table 5', hallName: 'Main Hall' });
     expect(result.categories).toHaveLength(1);
+    expect(result.restaurant).toBeNull(); // pre-setup fresh install (B3(a))
+  });
+
+  it('public menu carries the branding SUBSET when a profile exists — staff-only fields stripped (B2(a))', async () => {
+    repository.findTableByQrToken.mockResolvedValue(tableRow() as never);
+    repository.findHallById.mockResolvedValue(hallRow() as never);
+    menuService.getPublicMenu.mockResolvedValue([]);
+    configService.findProfileOrNull.mockResolvedValue({
+      id: 'profile-1',
+      name: 'Restaurant El Djazair',
+      logoPath: 'logo.png',
+      primaryColor: '#111111',
+      secondaryColor: '#eeeeee',
+      currencyCode: 'DZD',
+      taxRatePercent: 1900, // money concern — must NOT cross to the customer
+      defaultLanguage: 'ar',
+      setupCompletedAt: 123, // wizard state — must NOT cross either
+      updatedAt: 1000,
+    });
+
+    const result = await service.getPublicMenuByQrToken('old-token');
+
+    expect(result.restaurant).toEqual({
+      name: 'Restaurant El Djazair',
+      logoPath: 'logo.png',
+      primaryColor: '#111111',
+      secondaryColor: '#eeeeee',
+      currencyCode: 'DZD',
+      defaultLanguage: 'ar',
+    });
   });
 });

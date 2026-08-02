@@ -5,6 +5,8 @@
  * display formatting is a frontend concern only.
  */
 
+import type { RestaurantBrandingDto } from './config';
+
 export interface CategoryDto {
   id: string;
   nameAr: string;
@@ -78,4 +80,9 @@ export interface PublicMenuCategoryDto {
 export interface PublicMenuDto {
   table: { id: string; label: string; hallName: string };
   categories: PublicMenuCategoryDto[];
+  /** Step 3.10 ruling B2(a) — additive: the restaurant's branding so the
+   * customer QR interface receives it (FR31's customer half). `null` until
+   * the Setup Wizard creates the profile row (ruling B3(a)) — the menu
+   * itself must still serve on a fresh install. */
+  restaurant: RestaurantBrandingDto | null;
 }

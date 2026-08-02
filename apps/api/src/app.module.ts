@@ -20,6 +20,7 @@ import { RealtimeModule } from './common/realtime/realtime.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { BackupModule } from './modules/backup/backup.module';
+import { RestaurantConfigModule } from './modules/config/restaurant-config.module';
 
 /**
  * Foundation composition for Phase 3. Domain modules attach here one at a
@@ -51,6 +52,12 @@ import { BackupModule } from './modules/backup/backup.module';
  * create with optional passphrase encryption (B4(a)), history, and the
  * Owner's backup-failed notification (B5(a)). Restore, scheduling and
  * retention are the Host/Electron phase (B1(a)).
+ * Step 3.10 online: config (branding/settings, FR31) — the restaurant
+ * profile's management path: GET for all staff (D6), PATCH for the Owner
+ * only (B1(a)) with the Security §6 logo pipeline, the post-commit
+ * `restaurant_profile.changed` broadcast through the pre-wired bridge
+ * (D7), and branding on the customer menu entry (B2(a)). Profile creation
+ * stays with the future Setup Wizard (B3(a)).
  */
 @Module({
   imports: [
@@ -73,6 +80,7 @@ import { BackupModule } from './modules/backup/backup.module';
     NotificationsModule,
     AnalyticsModule,
     BackupModule,
+    RestaurantConfigModule,
     IdempotencyModule,
     HealthModule,
   ],

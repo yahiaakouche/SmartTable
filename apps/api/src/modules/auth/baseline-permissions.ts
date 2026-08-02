@@ -79,4 +79,17 @@ export const BASELINE_PERMISSIONS: Readonly<Record<PermissionKey, readonly Emplo
   // Step 3.9 — backup slice. Ruling B3: Owner + Manager (FR13: manual backup
   // is "initiated by the Owner or Manager").
   [PermissionKey.BACKUP_MANAGE]: [EmployeeRole.OWNER, EmployeeRole.MANAGER],
+
+  // Step 3.10 — config (branding/settings) slice. D6: every staff screen
+  // renders branding, so viewing is open to all five roles. Ruling B1(a):
+  // mutation is Owner only (the PRD journeys assign branding and
+  // system-wide settings — tax rate, interface language — to the Owner).
+  [PermissionKey.CONFIG_VIEW]: [
+    EmployeeRole.OWNER,
+    EmployeeRole.MANAGER,
+    EmployeeRole.CASHIER,
+    EmployeeRole.WAITER,
+    EmployeeRole.KITCHEN,
+  ],
+  [PermissionKey.CONFIG_MANAGE]: [EmployeeRole.OWNER],
 };

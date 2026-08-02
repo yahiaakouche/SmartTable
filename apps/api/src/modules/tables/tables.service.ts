@@ -11,6 +11,7 @@ import type {
 } from '@smarttable/shared-types';
 import { TABLES_REPOSITORY, TablesRepository } from './tables.repository';
 import { MenuService } from '../menu/menu.service';
+import { RestaurantConfigService } from '../config/restaurant-config.service';
 import { AuditService } from '../audit/audit.service';
 import { DomainEventsService } from '../../common/events/domain-events.service';
 import {
@@ -51,6 +52,7 @@ export class TablesService {
   constructor(
     @Inject(TABLES_REPOSITORY) private readonly tablesRepository: TablesRepository,
     private readonly menuService: MenuService,
+    private readonly configService: RestaurantConfigService,
     private readonly audit: AuditService,
     private readonly events: DomainEventsService,
   ) {}
@@ -173,16 +175,30 @@ export class TablesService {
 
   /** Unauthenticated resolution of a table QR token to the live menu.
    * Unknown AND deactivated tokens produce the identical 404 — the endpoint
-   * never reveals which tokens have ever existed (no oracle). */
+   * never reveals which tokens have ever existed (no oracle).
+   * Step 3.10 ruling B2(a): the response also carries the restaurant's
+   * branding (FR31's customer half) — `null` until the Setup Wizard creates
+   * the profile row, so the menu still serves on a fresh install. */
   async getPublicMenuByQrToken(qrToken: string): Promise<PublicMenuDto> {
     const table = await this.tablesRepository.findTableByQrToken(qrToken);
     if (!table || !table.isActive) throw new EntityNotFoundException('table', qrToken);
 
     const hall = await this.tablesRepository.findHallById(table.hallId);
     const categories = await this.menuService.getPublicMenu();
+    const profile = await this.configService.findProfileOrNull();
     return {
       table: { id: table.id, label: table.label, hallName: hall?.name ?? '' },
       categories,
+      restaurant: profile
+        ? {
+            name: profile.name,
+            logoPath: profile.logoPath,
+            primaryColor: profile.primaryColor,
+            secondaryColor: profile.secondaryColor,
+            currencyCode: profile.currencyCode,
+            defaultLanguage: profile.defaultLanguage,
+          }
+        : null,
     };
   }
 
